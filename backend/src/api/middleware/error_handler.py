@@ -22,7 +22,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Validation error",
-                "errors": exc.errors(),
+                "errors": str(exc.errors()), 
             },
         )
 

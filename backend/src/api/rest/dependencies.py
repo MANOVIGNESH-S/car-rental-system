@@ -9,8 +9,8 @@ from src.constants.enums import UserRole
 from src.core.exceptions.base import ForbiddenError, UnauthorizedError
 from src.utils.jwt import decode_access_token
 
-# Token URL matches the auth router login path
-oauth2_scheme = OAuth2PasswordBearer(token_url="/api/v1/auth/login")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_db_connection(request: Request) -> AsyncGenerator:
     """
@@ -35,8 +35,7 @@ async def get_current_user(
     if not user_id:
         raise UnauthorizedError("Invalid token payload")
 
-    # Querying using asyncpg (raw SQL) as per your choice of driver
-    user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+    user = await conn.fetchrow("SELECT * FROM users WHERE user_id = $1", user_id)    
     
     if not user:
         raise UnauthorizedError("User not found")

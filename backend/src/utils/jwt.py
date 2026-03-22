@@ -5,6 +5,7 @@ from src.core.exceptions.base import UnauthorizedError
 
 ALGORITHM = "HS256"
 
+
 def create_access_token(data: dict) -> str:
     """Generates a JWT access token with an expiration timestamp."""
     to_encode = data.copy()

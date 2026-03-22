@@ -1,19 +1,30 @@
-from passlib.context import CryptContext
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ph = PasswordHasher(
+    time_cost=3,
+    memory_cost=65536,
+    parallelism=2,
+)
+
 
 def hash_password(plain: str) -> str:
-    """Hashes a plain-text password using bcrypt (12 rounds by default)."""
-    return pwd_context.hash(plain)
+    return ph.hash(plain)
+
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Verifies a plain-text password against a hashed version."""
-    return pwd_context.verify(plain, hashed)
+    try:
+        return ph.verify(hashed, plain)
+    except (VerifyMismatchError, VerificationError, InvalidHashError):
+        return False
+
 
 def hash_token(token: str) -> str:
-    """Hashes a refresh token for secure database storage."""
-    return pwd_context.hash(token)
+    return ph.hash(token)
+
 
 def verify_token(token: str, hashed: str) -> bool:
-    """Verifies a refresh token against its stored hash."""
-    return pwd_context.verify(token, hashed)
+    try:
+        return ph.verify(hashed, token)
+    except (VerifyMismatchError, VerificationError, InvalidHashError):
+        return False
