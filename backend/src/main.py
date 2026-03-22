@@ -9,14 +9,12 @@ from src.observability.logging.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- Startup ---
     app.state.pool = await create_pool()
     app.state.redis = await create_redis()
     logger.info("Application started: Database pool and Redis initialized")
     
     yield
     
-    # --- Shutdown ---
     await close_pool(app.state.pool)
     await close_redis(app.state.redis)
     logger.info("Application stopped: Connections closed")
@@ -29,5 +27,5 @@ if __name__ == "__main__":
         "src.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True  # Disable in production
+        reload=True
     )
