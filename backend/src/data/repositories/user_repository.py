@@ -2,6 +2,8 @@ from __future__ import annotations
 from uuid import UUID
 from asyncpg import Connection
 from src.data.models.postgres.user import User
+from typing import Any
+
 
 class UserRepository:
     async def get_by_id(self, conn: Connection, user_id: UUID) -> User | None:
@@ -45,3 +47,45 @@ class UserRepository:
             WHERE user_id = $3
         """
         await conn.execute(query, kyc_status, reviewed_by, user_id)
+
+
+
+
+    async def update_profile(
+        self, 
+        conn: Connection, 
+        user_id: UUID, 
+        full_name: str | None = None, 
+        phone_number: str | None = None
+    ) -> dict[str, Any] | None:
+        """
+        Dynamically updates user profile fields and returns the updated record.
+        """
+        fields = []
+        values = []
+        counter = 1
+
+        if full_name is not None:
+            fields.append(f"full_name = ${counter}")
+            values.append(full_name)
+            counter += 1
+
+        if phone_number is not None:
+            fields.append(f"phone_number = ${counter}")
+            values.append(phone_number)
+            counter += 1
+
+        fields.append("updated_at = NOW()")
+        
+        values.append(user_id)
+        where_clause = f"${counter}"
+
+        query = f"""
+            UPDATE users
+            SET {', '.join(fields)}
+            WHERE user_id = {where_clause}
+            RETURNING user_id, full_name, phone_number, updated_at;
+        """
+
+        row = await conn.fetchrow(query, *values)
+        return dict(row) if row else None

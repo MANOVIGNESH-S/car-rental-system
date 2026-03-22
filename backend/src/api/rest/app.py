@@ -3,7 +3,7 @@ from src.api.middleware.cors import register_cors
 from src.api.middleware.error_handler import register_exception_handlers
 from src.api.middleware.logging import RequestLoggingMiddleware
 from src.api.rest.routes.auth import router as auth_router
-
+from src.api.rest.routes.users import router as users_router
 
 
 def create_app() -> FastAPI:
@@ -18,5 +18,6 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestLoggingMiddleware)
 
     app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+    app.include_router(users_router, prefix="/users", tags=["Users"])
 
     return app
