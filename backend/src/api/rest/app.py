@@ -13,6 +13,9 @@ from src.api.rest.routes.bookings import admin_router as bookings_admin_router
 from src.api.rest.routes.damage import router as damage_router
 from src.api.rest.routes.damage import admin_router as damage_admin_router
 
+from src.api.rest.routes.payments import router as payments_router
+from src.api.rest.routes.payments import admin_router as payments_admin_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -39,5 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(damage_router, prefix="", tags=["Damage"])
     app.include_router(damage_admin_router, prefix="", tags=["Admin - Damage"])
 
+    app.include_router(payments_router, prefix="", tags=["Payments"])
+    app.include_router(payments_admin_router, prefix="", tags=["Admin - Payments"])
 
     return app
