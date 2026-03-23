@@ -89,3 +89,46 @@ class UserRepository:
 
         row = await conn.fetchrow(query, *values)
         return dict(row) if row else None
+    
+
+    async def update_kyc_urls(
+            self, 
+            conn: Connection, 
+            user_id: UUID, 
+            license_url: str, 
+            selfie_url: str
+        ) -> None:
+            query = """
+                UPDATE users 
+                SET license_url = $1, selfie_url = $2, updated_at = NOW() 
+                WHERE user_id = $3
+            """
+            await conn.execute(query, license_url, selfie_url, user_id)
+
+    async def get_kyc_status(self, conn: Connection, user_id: UUID) -> dict | None:
+        query = """
+            SELECT kyc_status, dl_expiry_date, extracted_address, kyc_verified_at 
+            FROM users 
+            WHERE user_id = $1
+        """
+        row = await conn.fetchrow(query, user_id)
+        return dict(row) if row else None
+
+    async def update_kyc_review(
+        self,
+        conn: Connection,
+        user_id: UUID,
+        kyc_status: str,
+        kyc_reviewed_by: UUID,
+        kyc_verified_at: datetime
+    ) -> dict:
+        query = """
+            UPDATE users 
+            SET kyc_status = $1, kyc_reviewed_by = $2, kyc_verified_at = $3, updated_at = NOW() 
+            WHERE user_id = $4 
+            RETURNING user_id, kyc_status, kyc_verified_at, kyc_reviewed_by
+        """
+        row = await conn.fetchrow(query, kyc_status, kyc_reviewed_by, kyc_verified_at, user_id)
+        if not row:
+            raise NotFoundError(f"User with ID {user_id} not found")
+        return dict(row)
