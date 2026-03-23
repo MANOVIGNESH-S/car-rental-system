@@ -5,6 +5,7 @@ from src.api.middleware.logging import RequestLoggingMiddleware
 from src.api.rest.routes.auth import router as auth_router
 from src.api.rest.routes.users import router as users_router
 from src.api.rest.routes.kyc import kyc_router, kyc_admin_router
+from src.api.rest.routes.inventory import router as inventory_router, admin_router as inventory_admin_router
 
 
 def create_app() -> FastAPI:
@@ -22,5 +23,8 @@ def create_app() -> FastAPI:
     app.include_router(users_router, prefix="/users", tags=["Users"])
     app.include_router(kyc_router, prefix="/kyc", tags=["KYC"])
     app.include_router(kyc_admin_router, prefix="/admin", tags=["Admin - KYC"])
+    app.include_router(inventory_router, prefix="/inventory", tags=["Inventory"])
+    app.include_router(inventory_admin_router, prefix="", tags=["Admin - Inventory"])
+
 
     return app

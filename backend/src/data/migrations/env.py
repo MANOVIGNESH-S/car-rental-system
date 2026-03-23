@@ -13,6 +13,7 @@ from src.config.settings import settings
 from src.data.models.postgres.base import Base
 from src.data.models.postgres.user import User, Session
 from src.data.models.postgres.async_job import AsyncJob
+from src.data.models.postgres.vehicle import Vehicle           
 
 config = context.config
 
