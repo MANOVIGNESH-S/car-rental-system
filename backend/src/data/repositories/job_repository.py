@@ -101,3 +101,19 @@ class JobRepository:
             """,
             job_id,
         )
+
+    @staticmethod
+    async def get_by_reference(
+        conn: Any, 
+        reference_id: UUID, 
+        job_type: str
+    ) -> dict | None:
+        """Fetches the most recent job associated with a specific reference ID and type."""
+        query = """
+            SELECT * FROM async_jobs
+            WHERE reference_id = $1 AND job_type = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
+        row = await conn.fetchrow(query, reference_id, job_type)
+        return dict(row) if row else None

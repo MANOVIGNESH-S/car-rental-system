@@ -35,3 +35,17 @@ class DamageLogRepository:
     async def update_fuel_return(conn: Connection, booking_id: UUID, fuel_level: int) -> None:
         query = "UPDATE damage_logs SET fuel_level_at_return = $1 WHERE booking_id = $2;"
         await conn.execute(query, fuel_level, booking_id)
+
+    @staticmethod
+    async def update_classification(
+        conn: Any, 
+        booking_id: UUID, 
+        classification: str
+    ) -> None:
+        """Updates the LLM classification for a specific booking's damage log."""
+        query = """
+            UPDATE damage_logs
+            SET llm_classification = $1
+            WHERE booking_id = $2
+        """
+        await conn.execute(query, classification, booking_id)
