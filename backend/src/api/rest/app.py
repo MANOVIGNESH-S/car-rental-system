@@ -7,6 +7,9 @@ from src.api.rest.routes.users import router as users_router
 from src.api.rest.routes.kyc import kyc_router, kyc_admin_router
 from src.api.rest.routes.inventory import router as inventory_router, admin_router as inventory_admin_router
 
+from src.api.rest.routes.bookings import router as bookings_router
+from src.api.rest.routes.bookings import admin_router as bookings_admin_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -23,8 +26,12 @@ def create_app() -> FastAPI:
     app.include_router(users_router, prefix="/users", tags=["Users"])
     app.include_router(kyc_router, prefix="/kyc", tags=["KYC"])
     app.include_router(kyc_admin_router, prefix="/admin", tags=["Admin - KYC"])
+
     app.include_router(inventory_router, prefix="/inventory", tags=["Inventory"])
     app.include_router(inventory_admin_router, prefix="", tags=["Admin - Inventory"])
+
+    app.include_router(bookings_router, prefix="/bookings", tags=["Bookings"])
+    app.include_router(bookings_admin_router, prefix="", tags=["Admin - Bookings"])
 
 
     return app
