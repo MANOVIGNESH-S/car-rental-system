@@ -10,6 +10,9 @@ from src.api.rest.routes.inventory import router as inventory_router, admin_rout
 from src.api.rest.routes.bookings import router as bookings_router
 from src.api.rest.routes.bookings import admin_router as bookings_admin_router
 
+from src.api.rest.routes.damage import router as damage_router
+from src.api.rest.routes.damage import admin_router as damage_admin_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -32,6 +35,9 @@ def create_app() -> FastAPI:
 
     app.include_router(bookings_router, prefix="/bookings", tags=["Bookings"])
     app.include_router(bookings_admin_router, prefix="", tags=["Admin - Bookings"])
+
+    app.include_router(damage_router, prefix="", tags=["Damage"])
+    app.include_router(damage_admin_router, prefix="", tags=["Admin - Damage"])
 
 
     return app
