@@ -15,6 +15,10 @@ from src.data.models.postgres.user import User, Session
 from src.data.models.postgres.async_job import AsyncJob
 from src.data.models.postgres.vehicle import Vehicle           
 
+from src.data.models.postgres.booking import Booking      # noqa: F401
+from src.data.models.postgres.payment import Payment      # noqa: F401
+from src.data.models.postgres.damage_log import DamageLog # noqa: F401
+
 config = context.config
 
 if config.config_file_name is not None:

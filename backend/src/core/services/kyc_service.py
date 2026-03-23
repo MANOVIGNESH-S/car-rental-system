@@ -114,7 +114,7 @@ class KYCService:
             user_id=target_user_id,
             kyc_status=decision,
             kyc_reviewed_by=reviewed_by,
-            kyc_verified_at=datetime.now(timezone.utc)
+            kyc_verified_at=datetime.now(timezone.utc).replace(tzinfo=None)
         )
 
         return KYCReviewResponse.model_validate(updated)

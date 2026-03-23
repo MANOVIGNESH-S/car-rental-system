@@ -1,51 +1,103 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import Any, Optional
+from typing import Any
+
 from asyncpg import Connection
 
 from src.core.exceptions.base import NotFoundError
 
 
 class JobRepository:
-    """
-    Repository for raw asyncpg queries against the async_jobs table.
-    Strictly handles data persistence with zero business logic.
-    """
 
+    @staticmethod
     async def create(
-        self,
         conn: Connection,
         job_type: str,
         reference_id: UUID,
         reference_type: str,
-    ) -> dict:
-        query = """
-            INSERT INTO async_jobs (job_type, reference_id, reference_type) 
-            VALUES ($1, $2, $3) 
+    ) -> dict[str, Any]:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO async_jobs (job_type, reference_id, reference_type)
+            VALUES ($1, $2, $3)
             RETURNING *
-        """
-        row = await conn.fetchrow(query, job_type, reference_id, reference_type)
-        return dict(row)
+            """,
+            job_type,
+            reference_id,
+            reference_type,
+        )
+        return dict(row) if row else {}
 
-    async def get_by_id(self, conn: Connection, job_id: UUID) -> dict | None:
-        query = "SELECT * FROM async_jobs WHERE job_id = $1"
-        row = await conn.fetchrow(query, job_id)
+    @staticmethod
+    async def get_by_id(
+        conn: Connection,
+        job_id: UUID,
+    ) -> dict[str, Any] | None:
+        row = await conn.fetchrow(
+            "SELECT * FROM async_jobs WHERE job_id = $1",
+            job_id,
+        )
         return dict(row) if row else None
 
+    @staticmethod
     async def update_status(
-        self,
         conn: Connection,
         job_id: UUID,
         status: str,
-        last_error: Optional[str] = None,
-        celery_task_id: Optional[str] = None,
+        last_error: str | None = None,
+        celery_task_id: str | None = None,
     ) -> None:
-        query = """
-            UPDATE async_jobs 
-            SET status = $1, last_error = $2, celery_task_id = $3, updated_at = NOW() 
+        result = await conn.execute(
+            """
+            UPDATE async_jobs
+            SET status = $1, last_error = $2, celery_task_id = $3, updated_at = NOW()
             WHERE job_id = $4
-        """
-        result = await conn.execute(query, status, last_error, celery_task_id, job_id)
+            """,
+            status,
+            last_error,
+            celery_task_id,
+            job_id,
+        )
         if result == "UPDATE 0":
-            raise NotFoundError(f"Job with ID {job_id} not found")
+            raise NotFoundError("Job")
+
+    @staticmethod
+    async def get_failed_and_stuck(
+        conn: Connection,
+        job_type: str | None = None,
+        status: str | None = None,
+        page: int = 1,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        offset = (page - 1) * limit
+        rows = await conn.fetch(
+            """
+            SELECT * FROM async_jobs
+            WHERE ($1::text IS NULL OR job_type = $1)
+            AND ($2::text IS NULL OR status = $2)
+            ORDER BY updated_at DESC
+            LIMIT $3 OFFSET $4
+            """,
+            job_type,
+            status,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    async def increment_retry(
+        conn: Connection,
+        job_id: UUID,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE async_jobs
+            SET status = 'queued',
+                retry_count = retry_count + 1,
+                updated_at = NOW()
+            WHERE job_id = $1
+            """,
+            job_id,
+        )
