@@ -11,18 +11,16 @@ from alembic import context
 
 from src.config.settings import settings
 from src.data.models.postgres.base import Base
-from src.data.models.postgres.user import User, Session  
+from src.data.models.postgres.user import User, Session
+from src.data.models.postgres.async_job import AsyncJob
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-sqlalchemy_url = settings.database_url.replace(
-    "postgresql://", "postgresql+asyncpg://"
-)
-
-config.set_main_option("sqlalchemy.url", sqlalchemy_url)
+# asyncpg URL — postgresql+asyncpg:// — correct for async engine
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 target_metadata = Base.metadata
 
