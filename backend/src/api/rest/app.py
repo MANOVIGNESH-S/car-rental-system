@@ -23,6 +23,9 @@ from src.api.rest.routes.jobs import admin_router as jobs_admin_router
 
 from src.api.rest.routes.webhooks import webhooks_router
 
+from src.api.rest.routes.health import router as health_router
+
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -58,6 +61,9 @@ def create_app() -> FastAPI:
     app.include_router(jobs_admin_router, prefix="", tags=["Admin - Jobs"])
 
     app.include_router(webhooks_router, prefix="/internal/webhooks", tags=["Internal - Webhooks"])
+
+    app.include_router(health_router)
+
 
     
     return app
