@@ -117,3 +117,62 @@ class JobRepository:
         """
         row = await conn.fetchrow(query, reference_id, job_type)
         return dict(row) if row else None
+    
+    @staticmethod
+    async def get_all_with_filters(
+        conn: Any,
+        job_type: str | None,
+        status: str | None,
+        page: int,
+        limit: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        Fetches a paginated list of jobs with filters and calculates the 'is_stuck' flag.
+        Returns a tuple of (jobs_list, total_count).
+        """
+        offset = (page - 1) * limit
+
+        # 1. Get Total Count
+        count_query = """
+            SELECT COUNT(*) 
+            FROM async_jobs 
+            WHERE ($1::text IS NULL OR job_type = $1)
+            AND ($2::text IS NULL OR status = $2)
+        """
+        total_count = await conn.fetchval(count_query, job_type, status)
+
+        # 2. Get Paginated Data
+        select_query = """
+            SELECT *,
+                CASE 
+                    WHEN status = 'processing' 
+                    AND updated_at < NOW() - interval '10 minutes' 
+                    THEN true ELSE false 
+                END AS is_stuck
+            FROM async_jobs
+            WHERE ($1::text IS NULL OR job_type = $1)
+            AND ($2::text IS NULL OR status = $2)
+            ORDER BY updated_at DESC
+            LIMIT $3 OFFSET $4
+        """
+        rows = await conn.fetch(select_query, job_type, status, limit, offset)
+        
+        return [dict(r) for r in rows], total_count
+
+    @staticmethod
+    async def reset_for_retry(conn: Any, job_id: UUID) -> dict[str, Any]:
+        """
+        Resets a failed job to 'queued' status and increments the retry counter.
+        Returns the updated record.
+        """
+        query = """
+            UPDATE async_jobs
+            SET status = 'queued',
+                retry_count = retry_count + 1,
+                last_error = NULL,
+                updated_at = NOW()
+            WHERE job_id = $1
+            RETURNING *
+        """
+        row = await conn.fetchrow(query, job_id)
+        return dict(row) if row else {}
