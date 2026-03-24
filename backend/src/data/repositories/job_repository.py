@@ -7,6 +7,8 @@ from asyncpg import Connection
 
 from src.core.exceptions.base import NotFoundError
 
+import asyncpg
+
 
 class JobRepository:
 
@@ -176,3 +178,39 @@ class JobRepository:
         """
         row = await conn.fetchrow(query, job_id)
         return dict(row) if row else {}
+
+    @staticmethod
+    async def complete_job(
+        conn: asyncpg.Connection,
+        job_id: UUID,
+        celery_task_id: str | None = None,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE async_jobs
+            SET status='completed',
+                celery_task_id=$1,
+                updated_at=NOW()
+            WHERE job_id=$2
+            """,
+            celery_task_id,
+            job_id,
+        )
+
+    @staticmethod
+    async def fail_job(
+        conn: asyncpg.Connection,
+        job_id: UUID,
+        last_error: str,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE async_jobs
+            SET status='failed',
+                last_error=$1,
+                updated_at=NOW()
+            WHERE job_id=$2
+            """,
+            last_error,
+            job_id,
+        )
