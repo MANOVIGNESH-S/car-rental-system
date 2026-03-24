@@ -43,7 +43,7 @@ class AuthService:
             password_hash=pwd_hash
         )
 
-        return UserResponse.model_validate(user)
+        return UserResponse.model_validate(dict(user))
 
     async def login(
         self, 
@@ -52,18 +52,18 @@ class AuthService:
     ) -> tuple[LoginResponse, str]:
         """Authenticates user and initiates a secure session with token rotation."""
         user = await self.user_repo.get_by_email(conn, data.email)
-        if not user or not verify_password(data.password, user.password_hash):
+        if not user or not verify_password(data.password, user["password_hash"]):
             raise UnauthorizedError("Invalid credentials")
 
         access_token = create_access_token({
-            "sub": str(user.user_id),
-            "role": user.role
+            "sub": str(user["user_id"]),
+            "role": user["role"]
         })
 
         raw_refresh_token = secrets.token_hex(64)
         refresh_hash = hash_token(raw_refresh_token)
         
-        await self.session_repo.delete_by_user_id(conn, user.user_id)
+        await self.session_repo.delete_by_user_id(conn, user["user_id"])
         
         expires_at = (
                 datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
@@ -72,14 +72,14 @@ class AuthService:
         
         await self.session_repo.create(
             conn=conn,
-            user_id=user.user_id,
+            user_id=user["user_id"],
             refresh_token_hash=refresh_hash,
             expires_at=expires_at
         )
 
         response = LoginResponse(
             access_token=access_token,
-            user=UserResponse.model_validate(user)
+            user=UserResponse.model_validate(dict(user))
         )
         
         return response, raw_refresh_token
@@ -96,11 +96,11 @@ class AuthService:
         if not session:
             raise UnauthorizedError("Session not found")
             
-        if session.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        if session["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
             await self.session_repo.delete_by_user_id(conn, user_id)
             raise UnauthorizedError("Session expired")
 
-        if not verify_token(refresh_token_cookie, session.refresh_token_hash):
+        if not verify_token(refresh_token_cookie, session["refresh_token_hash"]):
             await self.session_repo.delete_by_user_id(conn, user_id)
             raise UnauthorizedError("Invalid refresh token")
 
@@ -109,8 +109,8 @@ class AuthService:
             raise UnauthorizedError("User no longer exists")
 
         new_access_token = create_access_token({
-            "sub": str(user.user_id),
-            "role": user.role
+            "sub": str(user["user_id"]),
+            "role": user["role"]
         })
         new_raw_refresh_token = secrets.token_hex(64)
         new_refresh_hash = hash_token(new_raw_refresh_token)
