@@ -3,6 +3,8 @@ from uuid import UUID
 from typing import Any
 from asyncpg import Connection
 
+import asyncpg
+
 class DamageLogRepository:
     @staticmethod
     async def create_empty(conn: Connection, booking_id: UUID) -> dict[str, Any]:
@@ -49,3 +51,19 @@ class DamageLogRepository:
             WHERE booking_id = $2
         """
         await conn.execute(query, classification, booking_id)
+
+    @staticmethod
+    async def update_llm_classification(
+        conn: asyncpg.Connection,
+        booking_id: UUID,
+        classification: str,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE damage_logs
+            SET llm_classification=$1
+            WHERE booking_id=$2
+            """,
+            classification,
+            booking_id,
+        )

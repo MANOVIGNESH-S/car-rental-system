@@ -5,6 +5,8 @@ from typing import Any
 from asyncpg import Connection
 from src.core.exceptions.base import NotFoundError
 
+import asyncpg 
+
 class UserRepository:
     @staticmethod
     async def get_by_id(conn: Connection, user_id: UUID) -> dict | None:
@@ -190,3 +192,29 @@ class UserRepository:
         """
         row = await conn.fetchrow(query, role, user_id)
         return dict(row)
+
+    @staticmethod
+    async def update_kyc_from_worker(
+        conn: asyncpg.Connection,
+        user_id: UUID,
+        kyc_status: str,
+        extracted_address: str | None,
+        dl_expiry_date: date | None,
+        kyc_verified_at: datetime | None,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE users
+            SET kyc_status=$1,
+                extracted_address=$2,
+                dl_expiry_date=$3,
+                kyc_verified_at=$4,
+                updated_at=NOW()
+            WHERE user_id=$5
+            """,
+            kyc_status,
+            extracted_address,
+            dl_expiry_date,
+            kyc_verified_at,
+            user_id,
+        )
