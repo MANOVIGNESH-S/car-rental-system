@@ -3,10 +3,11 @@ from typing import Any
 from src.data.repositories.job_repository import JobRepository
 from src.core.exceptions.base import NotFoundError, ConflictError
 from src.schemas.async_job import AsyncJobListResponse, AsyncJobResponse, RetryJobResponse
-from src.constants.enums import JobStatus
+from src.constants.enums import JobStatus, JobType
 from src.observability.logging.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class JobService:
     @staticmethod
@@ -22,10 +23,10 @@ class JobService:
         Includes 'is_stuck' logic processed at the repository level.
         """
         rows, total = await JobRepository.get_all_with_filters(
-            conn=conn, 
-            job_type=job_type, 
-            status=status, 
-            page=page, 
+            conn=conn,
+            job_type=job_type,
+            status=status,
+            page=page,
             limit=limit
         )
 
@@ -60,7 +61,7 @@ class JobService:
         requested_by: UUID,
     ) -> RetryJobResponse:
         """
-        Logic to reset a failed job back to queued status.
+        Logic to reset a failed job back to queued status and fire the Celery task.
         Validates existence and current status before updating.
         """
         # 1. Check existence
@@ -69,14 +70,33 @@ class JobService:
             raise NotFoundError("Job")
 
         # 2. Business Rule: Only failed jobs can be retried
-        if job["status"] != JobStatus.failed:
+        if job["status"] != JobStatus.failed.value:
             raise ConflictError("Only failed jobs can be retried")
 
-        # 3. Perform update
+        # 3. Reset status in DB
         updated = await JobRepository.reset_for_retry(conn, job_id)
 
-        # 4. Log the administrative action
-        logger.info(f"Job {job_id} queued for retry by {requested_by}")
+        # 4. Fire the actual Celery task based on job type
+        job_type = job["job_type"]
+        reference_id = str(job["reference_id"])
+        reference_type = job["reference_type"]
+
+        if job_type == JobType.kyc_verification.value:
+            from src.workers.kyc_worker import run_kyc_verification
+            run_kyc_verification.delay(job_id=str(job_id), user_id=reference_id)
+
+        elif job_type == JobType.damage_assessment.value:
+            from src.workers.damage_worker import run_damage_assessment
+            run_damage_assessment.delay(job_id=str(job_id), booking_id=reference_id)
+
+        elif job_type == JobType.email_notification.value:
+            from src.workers.notification_worker import send_email_notification
+            send_email_notification.delay(
+                reference_id=reference_id,
+                reference_type=reference_type,
+            )
+
+        logger.info(f"Job {job_id} (type={job_type}) re-enqueued to Celery by {requested_by}")
 
         return RetryJobResponse(
             job_id=job_id,

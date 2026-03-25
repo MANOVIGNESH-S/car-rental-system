@@ -25,3 +25,5 @@ Thumbs.db
 .coverage
 
 frontend/dist/
+
+celerybeat-schedule*

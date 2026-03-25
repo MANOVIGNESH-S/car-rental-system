@@ -155,6 +155,12 @@ class BookingService:
                     ReferenceType.booking.value,
                 )
 
+                from src.workers.notification_worker import send_email_notification
+                send_email_notification.delay(
+                    reference_id=str(booking_id),
+                    reference_type=ReferenceType.booking.value,
+                )
+
                 logger.info(f"Booking created: {booking_id} for user {user_id}")
 
                 return CreateBookingResponse(
@@ -174,7 +180,7 @@ class BookingService:
     @staticmethod
     async def get_user_bookings(conn: asyncpg.Connection, user_id: UUID, status: str | None, page: int, limit: int) -> list[BookingListItem]:
         rows = await BookingRepository.get_by_user(conn, user_id, status, page, limit)
-    
+
         result = []
         for row in rows:
             thumbnail_urls = row.get("thumbnail_urls") or []
@@ -193,7 +199,6 @@ class BookingService:
             result.append(item)
         return result
 
-
     @staticmethod
     async def get_booking_detail(conn: asyncpg.Connection, booking_id: UUID, user_id: UUID) -> BookingDetailResponse:
         booking = await BookingRepository.get_by_id(conn, booking_id)
@@ -205,7 +210,7 @@ class BookingService:
 
         payments = await PaymentRepository.get_by_booking_id(conn, booking_id)
         booking["payments"] = [BookingPaymentInfo(**p) for p in payments]
-        
+
         return BookingDetailResponse(**booking)
 
     @staticmethod
@@ -229,6 +234,12 @@ class BookingService:
             JobType.email_notification.value,
             booking_id,
             ReferenceType.booking.value,
+        )
+
+        from src.workers.notification_worker import send_email_notification
+        send_email_notification.delay(
+            reference_id=str(booking_id),
+            reference_type=ReferenceType.booking.value,
         )
 
         logger.info(f"Booking cancelled: {booking_id}")
@@ -288,7 +299,13 @@ class BookingService:
             ReferenceType.booking.value,
         )
 
-        logger.info(f"Checkout complete, damage job created: {job['job_id']} for booking {booking_id}")
+        from src.workers.damage_worker import run_damage_assessment
+        run_damage_assessment.delay(
+            job_id=str(job["job_id"]),
+            booking_id=str(booking_id),
+        )
+
+        logger.info(f"Checkout complete, damage job enqueued to Celery: {job['job_id']} for booking {booking_id}")
 
         return CheckoutResponse(
             booking_id=booking_id,
