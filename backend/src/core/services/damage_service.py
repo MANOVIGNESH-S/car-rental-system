@@ -47,14 +47,14 @@ class DamageService:
         if booking["status"] != "reserved":
             raise ConflictError("Pre-rental images can only be uploaded for reserved bookings")
 
-        if len(files) != 7:
+        if len(files) != 5:
             raise ValidationError(
-                "Exactly 7 images required: front, rear, left, right, dashboard, rear_seats, boot"
+                "Exactly 5 images required: front, rear, left, right, dashboard"
             )
 
         slot_names = [
             "front_exterior", "rear_exterior", "left_exterior", "right_exterior",
-            "dashboard", "rear_seats", "boot_interior"
+            "dashboard"
         ]
         uploaded_urls = []
 
@@ -93,14 +93,14 @@ class DamageService:
         if booking["status"] != "active":
             raise ConflictError("Post-rental images can only be uploaded for active bookings")
 
-        if len(files) != 7:
+        if len(files) != 5:
             raise ValidationError(
-                "Exactly 7 images required: front, rear, left, right, dashboard, rear_seats, boot"
+                "Exactly 5 images required: front, rear, left, right, dashboard"
             )
 
         slot_names = [
             "front_exterior", "rear_exterior", "left_exterior", "right_exterior",
-            "dashboard", "rear_seats", "boot_interior"
+            "dashboard"
         ]
         uploaded_urls = []
 
@@ -134,7 +134,7 @@ class DamageService:
         job = await JobRepository.get_by_reference(
             conn, booking_id, JobType.damage_assessment.value
         )
-        
+
         damage_job = None
         if job:
             damage_job = {
@@ -179,7 +179,7 @@ class DamageService:
 
         booking = await BookingRepository.get_by_id(conn, booking_id)
         security_deposit = Decimal(str(booking["security_deposit"]))
-        
+
         payment_ids = []
         refund_val = Decimal("0.00")
 
@@ -202,7 +202,6 @@ class DamageService:
             if damage_amount > security_deposit:
                 raise ValidationError("Damage amount cannot exceed security deposit")
 
-            # Create damage charge
             charge_payment = await PaymentRepository.create(
                 conn,
                 booking_id=booking_id,
@@ -215,7 +214,6 @@ class DamageService:
             )
             payment_ids.append(charge_payment["payment_id"])
 
-            # Create partial refund
             refund_val = security_deposit - damage_amount
             if refund_val > 0:
                 refund_payment = await PaymentRepository.create(

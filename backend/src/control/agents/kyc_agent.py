@@ -8,6 +8,14 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 
 from src.config.settings import settings
+from src.data.clients.s3_client import s3_client
+
+
+def _url_to_s3_key(url: str) -> str:
+    """Extract S3 key from a stored S3 URL."""
+    # URL format: https://{bucket}.s3.{region}.amazonaws.com/{key}
+    parts = url.split(".amazonaws.com/", 1)
+    return parts[1] if len(parts) == 2 else url
 
 # 1. State TypedDict
 class KYCState(TypedDict):
@@ -23,16 +31,24 @@ class KYCState(TypedDict):
 
 # 2. Node implementations
 async def fetch_documents(state: KYCState) -> Dict[str, Any]:
-    """Fetches license_url and selfie_url from DB."""
+    """Fetches license_url and selfie_url from DB, converts to presigned URLs for Groq access."""
     try:
         dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
         conn = await asyncpg.connect(dsn)
         try:
             query = "SELECT license_url, selfie_url FROM users WHERE user_id = $1"
             row = await conn.fetchrow(query, state["user_id"])
-            if row:
-                return {"license_url": row["license_url"], "selfie_url": row["selfie_url"]}
-            return {"error": f"User {state['user_id']} not found"}
+            if not row:
+                return {"error": f"User {state['user_id']} not found"}
+
+            license_key = _url_to_s3_key(row["license_url"])
+            selfie_key = _url_to_s3_key(row["selfie_url"])
+
+            # Generate presigned URLs valid for 15 min so Groq can fetch them
+            license_presigned = await s3_client.generate_presigned_url(license_key, expires_in=900)
+            selfie_presigned = await s3_client.generate_presigned_url(selfie_key, expires_in=900)
+
+            return {"license_url": license_presigned, "selfie_url": selfie_presigned}
         finally:
             await conn.close()
     except Exception as e:

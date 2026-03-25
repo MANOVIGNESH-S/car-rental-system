@@ -81,8 +81,14 @@ class KYCService:
             reference_id=user_id, 
             reference_type="user"
         )
+
+        from src.workers.kyc_worker import run_kyc_verification
+        run_kyc_verification.delay(
+            job_id=str(job["job_id"]),
+            user_id=str(user_id),
+        )
         
-        logger.info(f"KYC job created: {job['job_id']} for user {user_id}")
+        logger.info(f"KYC job enqueued to Celery: {job['job_id']} for user {user_id}")
 
         return KYCUploadResponse(
             message="Documents uploaded. Verification in progress.",

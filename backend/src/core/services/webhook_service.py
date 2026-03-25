@@ -61,6 +61,12 @@ class WebhookService:
                 reference_type=ReferenceType.user.value,
             )
 
+            from src.workers.notification_worker import send_email_notification
+            send_email_notification.delay(
+                reference_id=str(data.user_id),
+                reference_type=ReferenceType.user.value,
+            )
+
             logger.info(f"KYC job {data.job_id} completed for user {data.user_id}: {data.kyc_decision.value}")
 
     @staticmethod
@@ -84,7 +90,7 @@ class WebhookService:
             if data.classification == DamageClassification.green:
                 booking = await BookingRepository.get_by_id(conn, data.booking_id)
                 security_deposit = Decimal(str(booking["security_deposit"]))
-                
+
                 timestamp = int(datetime.now(timezone.utc).timestamp())
                 token = secrets.token_hex(3).upper()
                 mock_id = f"AUTO_REF_{timestamp}_{token}"
@@ -113,3 +119,11 @@ class WebhookService:
                 reference_id=data.booking_id,
                 reference_type=ReferenceType.booking.value,
             )
+
+            from src.workers.notification_worker import send_email_notification
+            send_email_notification.delay(
+                reference_id=str(data.booking_id),
+                reference_type=ReferenceType.booking.value,
+            )
+
+            logger.info(f"Damage job {data.job_id} completed for booking {data.booking_id}: {data.classification.value}")

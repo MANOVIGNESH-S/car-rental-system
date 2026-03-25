@@ -15,6 +15,7 @@ from src.schemas.damage import (
 router = APIRouter()
 admin_router = APIRouter()
 
+
 @router.post(
     "/bookings/{booking_id}/damage/pre",
     response_model=DamageImageUploadResponse,
@@ -28,14 +29,9 @@ async def upload_pre_rental_damage_images(
     left_exterior: UploadFile = File(...),
     right_exterior: UploadFile = File(...),
     dashboard: UploadFile = File(...),
-    rear_seats: UploadFile = File(...),
-    boot_interior: UploadFile = File(...),
     conn: Annotated[Any, Depends(get_db_connection)] = None,
 ):
-    files = [
-        front_exterior, rear_exterior, left_exterior, right_exterior,
-        dashboard, rear_seats, boot_interior
-    ]
+    files = [front_exterior, rear_exterior, left_exterior, right_exterior, dashboard]
     return await DamageService.upload_pre_images(conn, booking_id, files)
 
 
@@ -52,14 +48,9 @@ async def upload_post_rental_damage_images(
     left_exterior: UploadFile = File(...),
     right_exterior: UploadFile = File(...),
     dashboard: UploadFile = File(...),
-    rear_seats: UploadFile = File(...),
-    boot_interior: UploadFile = File(...),
     conn: Annotated[Any, Depends(get_db_connection)] = None,
 ):
-    files = [
-        front_exterior, rear_exterior, left_exterior, right_exterior,
-        dashboard, rear_seats, boot_interior
-    ]
+    files = [front_exterior, rear_exterior, left_exterior, right_exterior, dashboard]
     return await DamageService.upload_post_images(
         conn, booking_id, current_user["user_id"], files
     )
