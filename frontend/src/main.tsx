@@ -1,14 +1,17 @@
-// src/main.tsx
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import AppRouter from './app/routes';
-import { AuthProvider } from './context/AuthContext';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router-dom';
+import { router } from './app/routes';
 import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <AppRouter />
-    </AuthProvider>
-  </React.StrictMode>
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Failed to find the root element');
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <RouterProvider router={router} />
+  </StrictMode>
 );
