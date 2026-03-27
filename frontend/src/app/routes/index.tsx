@@ -5,7 +5,15 @@ import RegisterPage from '../../pages/auth/RegisterPage';
 import PortalLayout from '../../components/layout/PortalLayout';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
-// Lowercase function returning JSX is fine for Fast Refresh
+// Inventory Imports
+import VehicleListPage from '../../pages/portal/VehicleListPage';
+import VehicleDetailPage from '../../pages/portal/VehicleDetailPage';
+
+// --- NEW BOOKING IMPORTS ---
+import BookingPage from '../../pages/portal/BookingPage';
+import MyBookingsPage from '../../pages/portal/MyBookingsPage';
+import BookingDetailPage from '../../pages/portal/BookingDetailPage';
+
 const renderPlaceholder = (title: string) => (
   <div className="p-8">
     <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -15,7 +23,6 @@ const renderPlaceholder = (title: string) => (
 
 export const router = createBrowserRouter([
   {
-    // Inline the wrapper directly here to avoid Fast Refresh component warnings
     element: (
       <AuthProvider>
         <Outlet />
@@ -40,11 +47,30 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: renderPlaceholder('Customer Portal'),
+            element: <Navigate to="/portal/vehicles" replace />,
+          },
+          // Vehicle Routes
+          {
+            path: 'vehicles',
+            element: <VehicleListPage />,
           },
           {
+            path: 'vehicles/:vehicleId',
+            element: <VehicleDetailPage />,
+          },
+          // --- ADD THIS: The Booking Form Route ---
+          {
+            path: 'vehicles/:vehicleId/book',
+            element: <BookingPage />,
+          },
+          // Booking Management Routes
+          {
             path: 'bookings',
-            element: renderPlaceholder('My Bookings'),
+            element: <MyBookingsPage />, // Swapped placeholder for real page
+          },
+          {
+            path: 'bookings/:bookingId',
+            element: <BookingDetailPage />, // Added detail view
           },
         ],
       },
