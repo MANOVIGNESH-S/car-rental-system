@@ -1,5 +1,8 @@
-import axios, { AxiosError,type  AxiosResponse,type InternalAxiosRequestConfig } from 'axios';
-
+import axios, {
+  AxiosError,
+  type  AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 
 export const saveToken = (token: string): void => {
   localStorage.setItem('access_token', token);
@@ -13,19 +16,14 @@ export const getToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
 
-
 const api = axios.create({
   baseURL: 'http://127.0.0.1:8000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true,
 });
 
-
 interface QueueItem {
   resolve: (value: string) => void;
-  reject: (reason: AxiosError) => void;
+  reject: (reason: unknown) => void;
 }
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -35,17 +33,16 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 let isRefreshing = false;
 let failedQueue: QueueItem[] = [];
 
-const processQueue = (error: AxiosError | null, token: string | null = null): void => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else if (token) {
-      prom.resolve(token);
+const processQueue = (error: unknown, token: string | null = null): void => {
+  failedQueue.forEach((p) => {
+    if (token) {
+      p.resolve(token);
+    } else {
+      p.reject(error);
     }
   });
   failedQueue = [];
 };
-
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -67,7 +64,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (originalRequest.url === '/auth/refresh') {
+    if (originalRequest.url?.includes('/auth/refresh')) {
       clearTokens();
       window.location.href = '/login';
       return Promise.reject(error);
@@ -78,16 +75,17 @@ api.interceptors.response.use(
     }
 
     if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then((token) => {
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-          return api(originalRequest);
-        })
-        .catch((err: AxiosError) => Promise.reject(err));
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (token: string) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
+            resolve(api(originalRequest));
+          },
+          reject,
+        });
+      });
     }
 
     originalRequest._retry = true;
@@ -98,16 +96,16 @@ api.interceptors.response.use(
       const newToken = data.access_token;
 
       saveToken(newToken);
-      
+      api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+      processQueue(null, newToken);
+
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
       }
 
-      processQueue(null, newToken);
-
       return api(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError as AxiosError, null);
+      processQueue(refreshError, null);
       clearTokens();
       window.location.href = '/login';
       return Promise.reject(refreshError);
