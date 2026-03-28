@@ -129,3 +129,25 @@ class VehicleRepository:
         """
         rows = await conn.fetch(query)
         return [dict(row) for row in rows]
+    async def update_doc_expiry_dates(
+        self,
+        conn: Connection,
+        vehicle_id: UUID,
+        insurance_expiry_date,
+        rc_expiry_date,
+        puc_expiry_date,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE vehicles
+            SET insurance_expiry_date = $1,
+                rc_expiry_date = $2,
+                puc_expiry_date = $3,
+                updated_at = NOW()
+            WHERE vehicle_id = $4
+            """,
+            insurance_expiry_date,
+            rc_expiry_date,
+            puc_expiry_date,
+            vehicle_id,
+        )

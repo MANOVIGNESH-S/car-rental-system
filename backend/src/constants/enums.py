@@ -70,6 +70,7 @@ class JobType(str, Enum):
     kyc_verification = "kyc_verification"
     damage_assessment = "damage_assessment"
     email_notification = "email_notification"
+    vehicle_doc_extraction = "vehicle_doc_extraction"
 
 
 class JobStatus(str, Enum):
@@ -82,3 +83,4 @@ class JobStatus(str, Enum):
 class ReferenceType(str, Enum):
     user = "user"
     booking = "booking"
+    vehicle = "vehicle"

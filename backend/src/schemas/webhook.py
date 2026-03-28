@@ -7,7 +7,6 @@ from src.constants.enums import JobStatus, KYCStatus, DamageClassification
 
 class KYCResultWebhookRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     job_id: UUID
     user_id: UUID
     status: JobStatus
@@ -20,7 +19,6 @@ class KYCResultWebhookRequest(BaseModel):
 
 class DamageResultWebhookRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     job_id: UUID
     booking_id: UUID
     status: JobStatus
@@ -29,7 +27,17 @@ class DamageResultWebhookRequest(BaseModel):
     error: str | None = None
 
 
+class VehicleDocResultWebhookRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    job_id: UUID
+    vehicle_id: UUID
+    status: JobStatus
+    insurance_expiry_date: date | None = None
+    rc_expiry_date: date | None = None
+    puc_expiry_date: date | None = None
+    error: str | None = None
+
+
 class WebhookAckResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     acknowledged: bool = True

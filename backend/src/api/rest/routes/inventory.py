@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
+from typing import Annotated, List
 from uuid import UUID
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
 from asyncpg import Connection
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
-from src.api.rest.dependencies import get_current_user, get_db_connection, require_role
-from src.constants.enums import FuelType, Transmission, UserRole, VehicleStatus
+from src.api.rest.dependencies import get_db_connection, require_role
+from src.constants.enums import FuelType, Transmission, UserRole
 from src.core.services.inventory_service import InventoryService
 from src.schemas.vehicle import (
-    CreateVehicleRequest,
     ExpiringDocItem,
     UpdateStatusRequest,
     UpdateVehicleRequest,
@@ -20,21 +20,14 @@ from src.schemas.vehicle import (
     VehicleListItem,
 )
 
-# Public Router
 router = APIRouter()
-# Admin Router
 admin_router = APIRouter()
-
 inventory_service = InventoryService()
 
 
-# --- PUBLIC ENDPOINTS ---
+# ── Public endpoints ─────────────────────────────────────────────────────────
 
-@router.get(
-    "/inventory",
-    response_model=list[VehicleListItem],
-    status_code=status.HTTP_200_OK
-)
+@router.get("/inventory", response_model=list[VehicleListItem])
 async def get_inventory(
     conn: Annotated[Connection, Depends(get_db_connection)],
     branch_tag: str | None = None,
@@ -55,11 +48,7 @@ async def get_inventory(
     )
 
 
-@router.get(
-    "/inventory/{vehicle_id}",
-    response_model=VehicleDetailResponse,
-    status_code=status.HTTP_200_OK
-)
+@router.get("/inventory/{vehicle_id}", response_model=VehicleDetailResponse)
 async def get_vehicle_details(
     vehicle_id: UUID,
     conn: Annotated[Connection, Depends(get_db_connection)],
@@ -67,26 +56,55 @@ async def get_vehicle_details(
     return await inventory_service.get_vehicle_detail(conn, vehicle_id)
 
 
-# --- ADMIN ENDPOINTS ---
+# ── Admin endpoints ──────────────────────────────────────────────────────────
 
 @admin_router.post(
     "/admin/vehicles",
     response_model=VehicleAdminResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
 )
 async def create_vehicle(
-    data: CreateVehicleRequest,
     conn: Annotated[Connection, Depends(get_db_connection)],
-):
-    return await inventory_service.create_vehicle(conn, data)
+    brand: str = Form(...),
+    model: str = Form(...),
+    vehicle_type: str = Form(...),
+    transmission: Transmission = Form(...),
+    fuel_type: FuelType = Form(...),
+    branch_tag: str = Form(...),
+    hourly_rate: Decimal = Form(...),
+    daily_rate: Decimal = Form(...),
+    security_deposit: Decimal = Form(...),
+    fuel_level_pct: int = Form(default=100),
+    # ↓ Multiple images — Swagger will show individual file pickers
+    vehicle_images: List[UploadFile] = File(..., description="Vehicle photos (JPG/PNG)"),
+    insurance_doc: UploadFile = File(..., description="Insurance certificate (PDF)"),
+    rc_doc: UploadFile = File(..., description="Registration certificate (PDF)"),
+    puc_doc: UploadFile = File(..., description="PUC certificate (PDF)"),
+) -> VehicleAdminResponse:
+    return await inventory_service.create_vehicle(
+        conn=conn,
+        brand=brand,
+        model=model,
+        vehicle_type=vehicle_type,
+        transmission=transmission.value,
+        fuel_type=fuel_type.value,
+        branch_tag=branch_tag,
+        hourly_rate=hourly_rate,
+        daily_rate=daily_rate,
+        security_deposit=security_deposit,
+        fuel_level_pct=fuel_level_pct,
+        vehicle_images=vehicle_images,
+        insurance_doc=insurance_doc,
+        rc_doc=rc_doc,
+        puc_doc=puc_doc,
+    )
 
 
 @admin_router.patch(
     "/admin/vehicles/{vehicle_id}",
     response_model=VehicleAdminResponse,
-    status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
 )
 async def update_vehicle(
     vehicle_id: UUID,
@@ -99,8 +117,7 @@ async def update_vehicle(
 @admin_router.patch(
     "/admin/vehicles/{vehicle_id}/status",
     response_model=VehicleAdminResponse,
-    status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
 )
 async def update_vehicle_status(
     vehicle_id: UUID,
@@ -113,7 +130,7 @@ async def update_vehicle_status(
 @admin_router.delete(
     "/admin/vehicles/{vehicle_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_role(UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.admin))],
 )
 async def delete_vehicle(
     vehicle_id: UUID,
@@ -125,8 +142,7 @@ async def delete_vehicle(
 @admin_router.get(
     "/admin/vehicles/expiring-docs",
     response_model=list[ExpiringDocItem],
-    status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
 )
 async def get_expiring_docs(
     conn: Annotated[Connection, Depends(get_db_connection)],
