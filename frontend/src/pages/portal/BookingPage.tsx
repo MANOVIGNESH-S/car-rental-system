@@ -21,17 +21,27 @@ const BookingPage = () => {
   const [endTime, setEndTime] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
-  // 1. Min: today + 1 hour, rounded to next hour
+  // Min: today + 1 hour, rounded to next hour, formatted for datetime-local
   const minStart = useMemo(() => {
     const d = new Date();
     d.setHours(d.getHours() + 1, 0, 0, 0); 
-    return d.toISOString().slice(0, 16);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }, []);
 
   const maxStart = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 60);
-    return d.toISOString().slice(0, 16);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }, []);
 
   const pricing = useMemo(() => {
@@ -59,6 +69,19 @@ const BookingPage = () => {
     };
   }, [startTime, endTime, vehicle]);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vehicleId || !startTime || !endTime || !paymentMethod) return;
+
+    // Send the raw local string from the input directly to the hook
+    submitBooking({
+      vehicle_id: vehicleId,
+      start_time: startTime,
+      end_time: endTime,
+      payment_method: paymentMethod as PaymentMethod,
+    });
+  };
+
   if (vehicleLoading) return <Spinner />;
 
   if (vehicleError || !vehicle) {
@@ -83,7 +106,6 @@ const BookingPage = () => {
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Book this vehicle</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* LEFT COLUMN */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div className="aspect-video bg-gray-100 flex items-center justify-center text-gray-400">
@@ -105,10 +127,9 @@ const BookingPage = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN */}
           <div className="lg:col-span-8">
             <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
-              <form onSubmit={(e) => { e.preventDefault(); submitBooking({ vehicle_id: vehicleId!, start_time: new Date(startTime).toISOString(), end_time: new Date(endTime).toISOString(), payment_method: paymentMethod as PaymentMethod }); }} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Pickup Date & Time</label>
