@@ -13,13 +13,18 @@ export const useCreateBooking = () => {
     setError(null);
 
     // 1. Validation Logic
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
-    const now = new Date();
+    // data.start_time comes in exactly as the input value: "YYYY-MM-DDThh:mm"
+    const startStr = data.start_time;
+    const endStr = data.end_time;
 
-    const startHour = start.getHours();
-    const endHour = end.getHours();
-    const endMinutes = end.getMinutes();
+    // Extract hours directly from the string to prevent timezone shifts
+    const startHour = parseInt(startStr.substring(11, 13), 10);
+    const endHour = parseInt(endStr.substring(11, 13), 10);
+    const endMinutes = parseInt(endStr.substring(14, 16), 10);
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const now = new Date();
 
     // Duration in milliseconds
     const durationMs = end.getTime() - start.getTime();
@@ -57,14 +62,27 @@ export const useCreateBooking = () => {
       return;
     }
 
-    // 2. API Call
+    // 2. Format Payload exactly as Backend expects ("YYYY-MM-DDThh:mm:00.000Z")
     setIsLoading(true);
     try {
-      const response = await createBookingService(data);
+      const formatForBackend = (localDateTimeStr: string) => {
+        // If it's a standard datetime-local string (length 16), append seconds and Z
+        if (localDateTimeStr.length === 16) {
+          return `${localDateTimeStr}:00.000Z`;
+        }
+        return localDateTimeStr;
+      };
+
+      const payload: CreateBookingRequest = {
+        ...data,
+        start_time: formatForBackend(startStr),
+        end_time: formatForBackend(endStr)
+      };
+
+      const response = await createBookingService(payload);
       setSuccessData(response);
       navigate(`/portal/bookings/${response.booking_id}`);
     } catch (err) {
-      // FIX: Handle FastAPI's 'detail' key, which can be a string OR an array of validation objects
       const e = err as { 
         response?: { 
           data?: { 
@@ -79,13 +97,10 @@ export const useCreateBooking = () => {
 
       if (resData) {
         if (typeof resData.detail === 'string') {
-          // Handles 400 Bad Request: {"detail": "Pick-up and drop-off must be..."}
           serverError = resData.detail;
         } else if (Array.isArray(resData.detail) && resData.detail.length > 0) {
-          // Handles 422 Validation Error: {"detail": [{"msg": "Input should be a valid..."}]}
           serverError = resData.detail[0].msg;
         } else if (resData.message) {
-          // Fallback for standard message formats
           serverError = resData.message;
         }
       }

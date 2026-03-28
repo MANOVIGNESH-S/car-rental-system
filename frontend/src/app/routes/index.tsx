@@ -5,11 +5,16 @@ import RegisterPage from '../../pages/auth/RegisterPage';
 import PortalLayout from '../../components/layout/PortalLayout';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
+// --- NEW HOME, PROFILE & KYC IMPORTS ---
+import HomePage from '../../pages/portal/HomePage';
+import KycPage from '../../pages/portal/KycPage';
+import ProfilePage from '../../pages/portal/ProfilePage';
+
 // Inventory Imports
 import VehicleListPage from '../../pages/portal/VehicleListPage';
 import VehicleDetailPage from '../../pages/portal/VehicleDetailPage';
 
-// --- NEW BOOKING IMPORTS ---
+// Booking Imports
 import BookingPage from '../../pages/portal/BookingPage';
 import MyBookingsPage from '../../pages/portal/MyBookingsPage';
 import BookingDetailPage from '../../pages/portal/BookingDetailPage';
@@ -45,9 +50,19 @@ export const router = createBrowserRouter([
         path: '/portal',
         element: <PortalLayout />,
         children: [
+          // Set HomePage as the default view when hitting /portal
           {
             index: true,
-            element: <Navigate to="/portal/vehicles" replace />,
+            element: <HomePage />, 
+          },
+          // New Profile and KYC routes
+          {
+            path: 'profile',
+            element: <ProfilePage />,
+          },
+          {
+            path: 'kyc',
+            element: <KycPage />,
           },
           // Vehicle Routes
           {
@@ -58,7 +73,6 @@ export const router = createBrowserRouter([
             path: 'vehicles/:vehicleId',
             element: <VehicleDetailPage />,
           },
-          // --- ADD THIS: The Booking Form Route ---
           {
             path: 'vehicles/:vehicleId/book',
             element: <BookingPage />,
@@ -66,11 +80,11 @@ export const router = createBrowserRouter([
           // Booking Management Routes
           {
             path: 'bookings',
-            element: <MyBookingsPage />, // Swapped placeholder for real page
+            element: <MyBookingsPage />, 
           },
           {
             path: 'bookings/:bookingId',
-            element: <BookingDetailPage />, // Added detail view
+            element: <BookingDetailPage />, 
           },
         ],
       },
