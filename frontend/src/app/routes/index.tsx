@@ -5,7 +5,7 @@ import RegisterPage from '../../pages/auth/RegisterPage';
 import PortalLayout from '../../components/layout/PortalLayout';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
-// --- NEW HOME, PROFILE & KYC IMPORTS ---
+// --- PORTAL IMPORTS ---
 import HomePage from '../../pages/portal/HomePage';
 import KycPage from '../../pages/portal/KycPage';
 import ProfilePage from '../../pages/portal/ProfilePage';
@@ -18,6 +18,10 @@ import VehicleDetailPage from '../../pages/portal/VehicleDetailPage';
 import BookingPage from '../../pages/portal/BookingPage';
 import MyBookingsPage from '../../pages/portal/MyBookingsPage';
 import BookingDetailPage from '../../pages/portal/BookingDetailPage';
+
+// --- DASHBOARD IMPORTS ---
+import OverviewPage from '../../pages/dashboard/OverviewPage';
+import FleetPage from '../../pages/dashboard/FleetPage';
 
 const renderPlaceholder = (title: string) => (
   <div className="p-8">
@@ -55,7 +59,7 @@ export const router = createBrowserRouter([
             index: true,
             element: <HomePage />, 
           },
-          // New Profile and KYC routes
+          // Profile and KYC routes
           {
             path: 'profile',
             element: <ProfilePage />,
@@ -94,11 +98,20 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: renderPlaceholder('Staff Dashboard'),
+            element: <OverviewPage />,
           },
           {
             path: 'fleet',
-            element: renderPlaceholder('Fleet Management'),
+            element: <FleetPage />,
+          },
+          // Placeholders for upcoming dashboard features
+          {
+            path: 'bookings',
+            element: renderPlaceholder('Staff Booking Management'),
+          },
+          {
+            path: 'kyc-review',
+            element: renderPlaceholder('KYC Review'),
           },
         ],
       },

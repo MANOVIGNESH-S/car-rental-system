@@ -127,3 +127,37 @@ class WebhookService:
             )
 
             logger.info(f"Damage job {data.job_id} completed for booking {data.booking_id}: {data.classification.value}")
+    @staticmethod
+    async def process_vehicle_doc_result(
+        conn: asyncpg.Connection,
+        data,  # VehicleDocResultWebhookRequest
+    ) -> None:
+        from src.schemas.webhook import VehicleDocResultWebhookRequest
+        from src.data.repositories.vehicle_repository import VehicleRepository
+
+        if data.status.value == "failed":
+            error_msg = data.error or "Doc extraction failed"
+            await JobRepository.fail_job(conn, data.job_id, error_msg)
+            logger.error(
+                f"Vehicle doc job {data.job_id} failed for vehicle {data.vehicle_id}: {error_msg}"
+            )
+            return
+
+        if data.status.value == "completed":
+            await JobRepository.complete_job(conn, data.job_id)
+
+            vehicle_repo = VehicleRepository()
+            await vehicle_repo.update_doc_expiry_dates(
+                conn,
+                data.vehicle_id,
+                data.insurance_expiry_date,
+                data.rc_expiry_date,
+                data.puc_expiry_date,
+            )
+
+            logger.info(
+                f"Vehicle {data.vehicle_id} doc extraction complete — "
+                f"insurance: {data.insurance_expiry_date}, "
+                f"rc: {data.rc_expiry_date}, "
+                f"puc: {data.puc_expiry_date}"
+            )
