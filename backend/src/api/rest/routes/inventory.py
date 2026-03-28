@@ -82,6 +82,7 @@ async def create_vehicle(
     rc_doc: UploadFile = File(..., description="Registration certificate (PDF)"),
     puc_doc: UploadFile = File(..., description="PUC certificate (PDF)"),
 ) -> VehicleAdminResponse:
+    
     return await inventory_service.create_vehicle(
         conn=conn,
         brand=brand,

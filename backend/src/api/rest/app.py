@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from src.api.middleware.cors import register_cors
 from src.api.middleware.error_handler import register_exception_handlers
 from src.api.middleware.logging import RequestLoggingMiddleware
@@ -24,7 +25,6 @@ from src.api.rest.routes.jobs import admin_router as jobs_admin_router
 from src.api.rest.routes.webhooks import webhooks_router
 
 from src.api.rest.routes.health import router as health_router
-
 
 
 def create_app() -> FastAPI:
@@ -55,7 +55,6 @@ def create_app() -> FastAPI:
     app.include_router(payments_router, prefix="", tags=["Payments"])
     app.include_router(payments_admin_router, prefix="", tags=["Admin - Payments"])
 
-
     app.include_router(admin_router, prefix="", tags=["Admin - Users"])
 
     app.include_router(jobs_admin_router, prefix="", tags=["Admin - Jobs"])
@@ -64,6 +63,30 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
 
+    # ── Patch OpenAPI schema so Swagger renders vehicle_images as real
+    #    file pickers (format:binary) instead of the broken array<string> text box.
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            routes=app.routes,
+        )
+        for schema_name, schema_def in schema.get("components", {}).get("schemas", {}).items():
+            props = schema_def.get("properties", {})
+            if "vehicle_images" in props:
+                props["vehicle_images"] = {
+                    "type": "array",
+                    "items": {"type": "string", "format": "binary"},
+                    "description": "Vehicle photos (JPG/PNG)",
+                }
+        app.openapi_schema = schema
+        return schema
+
 
     
+
+    app.openapi = custom_openapi
+
     return app

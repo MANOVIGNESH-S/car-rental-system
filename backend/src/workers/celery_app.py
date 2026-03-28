@@ -10,7 +10,9 @@ celery_app = Celery(
         "src.workers.kyc_worker",
         "src.workers.damage_worker",
         "src.workers.notification_worker",
-        "src.workers.expiry_worker",  # Added the new worker here
+        "src.workers.expiry_worker", 
+        "src.workers.vehicle_doc_worker",
+
     ]
 )
 

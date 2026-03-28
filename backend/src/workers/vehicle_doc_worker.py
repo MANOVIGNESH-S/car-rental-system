@@ -21,7 +21,7 @@ def run_vehicle_doc_extraction(self, job_id: str, vehicle_id: str) -> dict:
             "error": None if result.get("success") else result.get("error", "Document extraction failed"),
         }
         response = httpx.post(
-            "http://127.0.0.1:8000/internal/webhooks/vehicle-doc-result",
+            f"{settings.internal_webhook_base_url}/internal/webhooks/vehicle-doc-result",
             json=payload,
             headers={"X-Internal-Secret": settings.internal_secret},
             timeout=30,

@@ -73,6 +73,7 @@ class JobType(str, Enum):
     vehicle_doc_extraction = "vehicle_doc_extraction"
 
 
+
 class JobStatus(str, Enum):
     queued = "queued"
     processing = "processing"

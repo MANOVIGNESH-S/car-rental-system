@@ -38,9 +38,10 @@ class Vehicle(Base):
     daily_rate: Mapped[float] = mapped_column(Numeric, nullable=False)
     security_deposit: Mapped[float] = mapped_column(Numeric, nullable=False)
     
-    insurance_expiry_date: Mapped[date] = mapped_column(nullable=False)
-    rc_expiry_date: Mapped[date] = mapped_column(nullable=False)
-    puc_expiry_date: Mapped[date] = mapped_column(nullable=False)
+    # Nullable: AI worker fills these after creation via webhook
+    insurance_expiry_date: Mapped[date | None] = mapped_column(nullable=True)
+    rc_expiry_date: Mapped[date | None] = mapped_column(nullable=True)
+    puc_expiry_date: Mapped[date | None] = mapped_column(nullable=True)
     
     insurance_url: Mapped[str] = mapped_column(String, nullable=False)
     rc_url: Mapped[str] = mapped_column(String, nullable=False)
