@@ -5,6 +5,7 @@ from typing import List
 
 from src.workers.celery_app import celery_app
 from src.config.settings import settings
+from src.constants.enums import ReferenceType  # FIX 2: use enum, not a raw string
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ async def _fetch_expiring_documents() -> List[asyncpg.Record]:
 def check_expiring_documents() -> None:
     """
     Cron task executed by Celery Beat to monitor expiring vehicle documents.
+    Runs daily at 09:00 UTC (configured in celery_app.py beat_schedule).
     """
     logger.info("Starting check for expiring vehicle documents...")
 
@@ -52,8 +54,21 @@ def check_expiring_documents() -> None:
 
             from src.workers.notification_worker import send_email_notification
             send_email_notification.delay(
-                reference_id=str(r['vehicle_id']),
-                reference_type="vehicle_documents",
+                reference_id=str(r["vehicle_id"]),
+                # FIX 2: Was "vehicle_documents" — not in ReferenceType enum, so
+                # notification_worker hit the fallback and emailed smtp_from instead
+                # of looking up the right recipient. "vehicle" is the correct enum value.
+                reference_type=ReferenceType.vehicle.value,
+                # FIX 3: Pass vehicle context so notification_worker can build
+                # a meaningful email body with doc names and expiry dates.
+                extra={
+                    "brand": r["brand"],
+                    "model": r["model"],
+                    "branch_tag": r["branch_tag"],
+                    "insurance_expiry_date": str(r["insurance_expiry_date"]) if r["insurance_expiry_date"] else None,
+                    "rc_expiry_date": str(r["rc_expiry_date"]) if r["rc_expiry_date"] else None,
+                    "puc_expiry_date": str(r["puc_expiry_date"]) if r["puc_expiry_date"] else None,
+                },
             )
 
     except Exception as e:

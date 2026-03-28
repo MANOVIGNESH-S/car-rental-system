@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     groq_api_key: str
 
+    internal_webhook_base_url: str = "http://127.0.0.1:8000"
+
+
     model_config = SettingsConfigDict(
         env_file=".env", 
         env_file_encoding="utf-8",

@@ -5,7 +5,7 @@ from decimal import Decimal
 import asyncpg
 
 from src.observability.logging.logger import get_logger
-from src.schemas.webhook import KYCResultWebhookRequest, DamageResultWebhookRequest
+from src.schemas.webhook import KYCResultWebhookRequest, DamageResultWebhookRequest , VehicleDocResultWebhookRequest
 from src.constants.enums import (
     DamageClassification,
     JobType,
@@ -29,6 +29,7 @@ class WebhookService:
         conn: asyncpg.Connection,
         data: KYCResultWebhookRequest,
     ) -> None:
+        # ✅ UNCHANGED — working correctly
         if data.status.value == "failed":
             error_msg = data.error or "Worker failed"
             await JobRepository.fail_job(conn, data.job_id, error_msg)
@@ -74,6 +75,7 @@ class WebhookService:
         conn: asyncpg.Connection,
         data: DamageResultWebhookRequest,
     ) -> None:
+        # ✅ UNCHANGED — working correctly
         if data.status.value == "failed":
             error_msg = data.error or "Worker failed"
             await JobRepository.fail_job(conn, data.job_id, error_msg)
@@ -127,12 +129,12 @@ class WebhookService:
             )
 
             logger.info(f"Damage job {data.job_id} completed for booking {data.booking_id}: {data.classification.value}")
+
     @staticmethod
     async def process_vehicle_doc_result(
         conn: asyncpg.Connection,
-        data,  # VehicleDocResultWebhookRequest
+        data, VehicleDocResultWebhookRequest
     ) -> None:
-        from src.schemas.webhook import VehicleDocResultWebhookRequest
         from src.data.repositories.vehicle_repository import VehicleRepository
 
         if data.status.value == "failed":
@@ -160,4 +162,25 @@ class WebhookService:
                 f"insurance: {data.insurance_expiry_date}, "
                 f"rc: {data.rc_expiry_date}, "
                 f"puc: {data.puc_expiry_date}"
+            )
+
+            # FIX 1: Vehicle doc completion was the only webhook handler that
+            # never sent a notification. KYC and damage both do — now we match
+            # that pattern. reference_type="vehicle" matches the ReferenceType
+            # enum and correctly routes in notification_worker.
+            await JobRepository.create(
+                conn,
+                job_type=JobType.email_notification.value,
+                reference_id=data.vehicle_id,
+                reference_type=ReferenceType.vehicle.value,
+            )
+
+            from src.workers.notification_worker import send_email_notification
+            send_email_notification.delay(
+                reference_id=str(data.vehicle_id),
+                reference_type=ReferenceType.vehicle.value,
+            )
+
+            logger.info(
+                f"Vehicle doc notification queued for vehicle {data.vehicle_id}"
             )

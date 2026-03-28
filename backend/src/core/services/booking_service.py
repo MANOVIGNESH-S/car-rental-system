@@ -37,6 +37,7 @@ from src.core.exceptions.base import (
     KYCRequiredError,
     SuspendedAccountError,
 )
+from src.data.clients.s3_client import s3_client
 from src.observability.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +48,8 @@ class BookingService:
     @staticmethod
     def _strip_tz(dt: datetime) -> datetime:
         return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+    # ── All logic below is unchanged except where marked FIX ────────────────
 
     @staticmethod
     async def create_booking(
@@ -178,18 +181,28 @@ class BookingService:
             raise ConflictError("Vehicle is being booked by another user. Please try again.")
 
     @staticmethod
-    async def get_user_bookings(conn: asyncpg.Connection, user_id: UUID, status: str | None, page: int, limit: int) -> list[BookingListItem]:
+    async def get_user_bookings(
+        conn: asyncpg.Connection,
+        user_id: UUID,
+        status: str | None,
+        page: int,
+        limit: int,
+    ) -> list[BookingListItem]:
         rows = await BookingRepository.get_by_user(conn, user_id, status, page, limit)
 
         result = []
         for row in rows:
             thumbnail_urls = row.get("thumbnail_urls") or []
+
+            # FIX: presign the thumbnail before sending to client
+            thumbnail = s3_client.presign(thumbnail_urls[0]) if thumbnail_urls else None
+
             item = BookingListItem(
                 booking_id=row["booking_id"],
                 vehicle_id=row["vehicle_id"],
                 vehicle_brand=row.get("vehicle_brand"),
                 vehicle_model=row.get("vehicle_model"),
-                vehicle_thumbnail=thumbnail_urls[0] if thumbnail_urls else None,
+                vehicle_thumbnail=thumbnail,
                 start_time=row["start_time"],
                 end_time=row["end_time"],
                 total_price=row["total_price"],
@@ -200,7 +213,11 @@ class BookingService:
         return result
 
     @staticmethod
-    async def get_booking_detail(conn: asyncpg.Connection, booking_id: UUID, user_id: UUID) -> BookingDetailResponse:
+    async def get_booking_detail(
+        conn: asyncpg.Connection,
+        booking_id: UUID,
+        user_id: UUID,
+    ) -> BookingDetailResponse:
         booking = await BookingRepository.get_by_id(conn, booking_id)
         if not booking:
             raise NotFoundError("Booking")
@@ -319,6 +336,7 @@ class BookingService:
         conn: asyncpg.Connection,
         filters: dict[str, Any],
     ) -> list[AdminBookingListItem]:
+        # Admin booking list has no image URLs — no presigning needed
         rows = await BookingRepository.get_all_admin(conn, **filters)
         return [
             AdminBookingListItem(

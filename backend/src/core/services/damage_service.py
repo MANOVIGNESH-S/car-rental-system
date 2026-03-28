@@ -65,14 +65,17 @@ class DamageService:
             file_bytes = await file.read()
             key = f"damage/{booking_id}/pre/{slot_names[i]}.jpg"
             url = await s3_client.upload_file(file_bytes, key, file.content_type)
-            uploaded_urls.append(url)
+            uploaded_urls.append(url)  # plain URL stored in DB
 
         await DamageLogRepository.update_pre_images(conn, booking_id, uploaded_urls)
+
+        # FIX: presign before returning — the response goes to the client
+        presigned_urls = [s3_client.presign(u) for u in uploaded_urls]
 
         return DamageImageUploadResponse(
             booking_id=booking_id,
             image_type="pre_rental",
-            uploaded_urls=uploaded_urls,
+            uploaded_urls=presigned_urls,
             uploaded_at=datetime.now(timezone.utc),
         )
 
@@ -111,14 +114,17 @@ class DamageService:
             file_bytes = await file.read()
             key = f"damage/{booking_id}/post/{slot_names[i]}.jpg"
             url = await s3_client.upload_file(file_bytes, key, file.content_type)
-            uploaded_urls.append(url)
+            uploaded_urls.append(url)  # plain URL stored in DB
 
         await DamageLogRepository.update_post_images(conn, booking_id, uploaded_urls)
+
+        # FIX: presign before returning — the response goes to the client
+        presigned_urls = [s3_client.presign(u) for u in uploaded_urls]
 
         return DamageImageUploadResponse(
             booking_id=booking_id,
             image_type="post_rental",
-            uploaded_urls=uploaded_urls,
+            uploaded_urls=presigned_urls,
             uploaded_at=datetime.now(timezone.utc),
         )
 
@@ -140,19 +146,24 @@ class DamageService:
             damage_job = {
                 "status": job["status"],
                 "retry_count": job["retry_count"],
-                "last_error": job["last_error"]
+                "last_error": job["last_error"],
             }
+
+        # FIX: presign image URL lists before returning — these are shown to
+        # admin reviewers in the UI and must be loadable in a browser
+        pre_urls = log.get("pre_rental_image_urls") or []
+        post_urls = log.get("post_rental_image_urls") or []
 
         return DamageLogResponse(
             log_id=log["log_id"],
             booking_id=log["booking_id"],
-            pre_rental_image_urls=log["pre_rental_image_urls"],
-            post_rental_image_urls=log["post_rental_image_urls"],
+            pre_rental_image_urls=[s3_client.presign(u) for u in pre_urls],
+            post_rental_image_urls=[s3_client.presign(u) for u in post_urls],
             fuel_level_at_pickup=log["fuel_level_at_pickup"],
             fuel_level_at_return=log["fuel_level_at_return"],
             llm_classification=log["llm_classification"],
             created_at=log["created_at"],
-            damage_job=damage_job
+            damage_job=damage_job,
         )
 
     @staticmethod
@@ -164,6 +175,7 @@ class DamageService:
         notes: str,
         resolved_by: UUID,
     ) -> DamageResolveResponse:
+        # ✅ UNCHANGED — no image URLs in this flow
         log = await DamageLogRepository.get_by_booking_id(conn, booking_id)
         if not log:
             raise NotFoundError("Damage log")
@@ -171,7 +183,7 @@ class DamageService:
         if log["llm_classification"] not in [
             DamageClassification.amber.value,
             DamageClassification.red.value,
-            DamageClassification.needs_review.value
+            DamageClassification.needs_review.value,
         ]:
             raise ConflictError(
                 "Damage resolution only available for Amber, Red, or needs_review classifications"

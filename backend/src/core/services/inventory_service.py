@@ -29,6 +29,34 @@ class InventoryService:
     def __init__(self) -> None:
         self.vehicle_repo = VehicleRepository()
 
+    # ── Presign helper ───────────────────────────────────────────────────────
+
+    def _presign_vehicle(self, v: dict, include_docs: bool = False) -> dict:
+        """
+        Replace every raw S3 URL in a vehicle dict with a presigned URL.
+        Call this on every path that builds an API response — never on the
+        raw DB row before it gets stored or passed to workers.
+
+        include_docs=True for admin responses that expose insurance/rc/puc URLs.
+        Image URLs (thumbnail_urls) are always presigned.
+        """
+        v = dict(v)
+
+        # Presign all vehicle photo thumbnails (shown to customers)
+        if v.get("thumbnail_urls"):
+            v["thumbnail_urls"] = [s3_client.presign(u) for u in v["thumbnail_urls"]]
+
+        # Presign document URLs only for admin-facing responses
+        if include_docs:
+            for field in ("insurance_url", "rc_url", "puc_url"):
+                if v.get(field):
+                    # Shorter window for sensitive documents
+                    v[field] = s3_client.presign(v[field], expires_in=900)
+
+        return v
+
+    # ── Public endpoints ─────────────────────────────────────────────────────
+
     async def get_available_vehicles(
         self,
         conn: Connection,
@@ -42,13 +70,14 @@ class InventoryService:
         vehicles = await self.vehicle_repo.get_available(
             conn, branch_tag, start_time, end_time, vehicle_type, fuel_type, transmission
         )
-        return [
-            VehicleListItem(
+        result = []
+        for v in vehicles:
+            v = self._presign_vehicle(v)
+            result.append(VehicleListItem(
                 **v,
                 thumbnail_url=v["thumbnail_urls"][0] if v["thumbnail_urls"] else "",
-            )
-            for v in vehicles
-        ]
+            ))
+        return result
 
     async def get_vehicle_detail(
         self, conn: Connection, vehicle_id: UUID
@@ -56,10 +85,13 @@ class InventoryService:
         vehicle = await self.vehicle_repo.get_by_id(conn, vehicle_id)
         if not vehicle:
             raise NotFoundError("Vehicle")
+        vehicle = self._presign_vehicle(vehicle)
         return VehicleDetailResponse(
             **vehicle,
             thumbnail_url=vehicle["thumbnail_urls"][0] if vehicle["thumbnail_urls"] else "",
         )
+
+    # ── Admin endpoints ──────────────────────────────────────────────────────
 
     async def create_vehicle(
         self,
@@ -80,7 +112,6 @@ class InventoryService:
         puc_doc: UploadFile,
     ) -> VehicleAdminResponse:
 
-        # Validate image types
         if not vehicle_images:
             raise ValidationError("At least one vehicle image is required")
         for img in vehicle_images:
@@ -89,14 +120,13 @@ class InventoryService:
                     f"Invalid image type for '{img.filename}'. Only JPG and PNG allowed."
                 )
 
-        # Validate document types
         for doc, label in [(insurance_doc, "Insurance"), (rc_doc, "RC"), (puc_doc, "PUC")]:
             if doc.content_type != "application/pdf":
                 raise ValidationError(f"{label} document must be a PDF.")
 
         temp_id = str(uuid.uuid4())
 
-        # Upload vehicle images
+        # Upload vehicle images — store plain URLs in DB
         thumbnail_urls: list[str] = []
         for i, img in enumerate(vehicle_images):
             img_bytes = await img.read()
@@ -105,7 +135,7 @@ class InventoryService:
             url = await s3_client.upload_file(img_bytes, key, img.content_type)
             thumbnail_urls.append(url)
 
-        # Upload PDFs
+        # Upload PDFs — store plain URLs in DB
         insurance_bytes = await insurance_doc.read()
         insurance_url = await s3_client.upload_file(
             insurance_bytes, f"vehicles/{temp_id}/docs/insurance.pdf", "application/pdf"
@@ -119,7 +149,6 @@ class InventoryService:
             puc_bytes, f"vehicles/{temp_id}/docs/puc.pdf", "application/pdf"
         )
 
-        # Insert vehicle (expiry dates = None, AI fills them)
         vehicle_data = {
             "brand": brand,
             "model": model,
@@ -131,7 +160,7 @@ class InventoryService:
             "daily_rate": daily_rate,
             "security_deposit": security_deposit,
             "fuel_level_pct": fuel_level_pct,
-            "thumbnail_urls": thumbnail_urls,
+            "thumbnail_urls": thumbnail_urls,     # plain URLs stored in DB
             "insurance_url": insurance_url,
             "rc_url": rc_url,
             "puc_url": puc_url,
@@ -144,7 +173,6 @@ class InventoryService:
         new_vehicle = await self.vehicle_repo.create(conn, vehicle_data)
         vehicle_id = new_vehicle["vehicle_id"]
 
-        # Enqueue AI doc extraction
         job = await JobRepository.create(
             conn,
             job_type=JobType.vehicle_doc_extraction.value,
@@ -156,9 +184,11 @@ class InventoryService:
 
         logger.info(f"Vehicle {vehicle_id} created. Doc extraction job: {job['job_id']}")
 
+        # Presign for the admin response (images + docs)
+        presigned = self._presign_vehicle(new_vehicle, include_docs=True)
         return VehicleAdminResponse(
-            **new_vehicle,
-            thumbnail_url=thumbnail_urls[0],
+            **presigned,
+            thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
             doc_extraction_status="queued",
         )
 
@@ -170,14 +200,16 @@ class InventoryService:
             raise NotFoundError("Vehicle")
         updates = data.model_dump(exclude_none=True)
         if not updates:
+            presigned = self._presign_vehicle(exists, include_docs=True)
             return VehicleAdminResponse(
-                **exists,
-                thumbnail_url=exists["thumbnail_urls"][0] if exists["thumbnail_urls"] else "",
+                **presigned,
+                thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
             )
         updated = await self.vehicle_repo.update(conn, vehicle_id, updates)
+        presigned = self._presign_vehicle(updated, include_docs=True)
         return VehicleAdminResponse(
-            **updated,
-            thumbnail_url=updated["thumbnail_urls"][0] if updated["thumbnail_urls"] else "",
+            **presigned,
+            thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
         )
 
     async def update_vehicle_status(
@@ -190,9 +222,10 @@ class InventoryService:
             if await self.vehicle_repo.has_active_bookings(conn, vehicle_id):
                 raise ConflictError("Cannot change status: active bookings exist")
         updated = await self.vehicle_repo.update_status(conn, vehicle_id, status.value)
+        presigned = self._presign_vehicle(updated, include_docs=True)
         return VehicleAdminResponse(
-            **updated,
-            thumbnail_url=updated["thumbnail_urls"][0] if updated["thumbnail_urls"] else "",
+            **presigned,
+            thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
         )
 
     async def delete_vehicle(self, conn: Connection, vehicle_id: UUID) -> None:
@@ -203,6 +236,7 @@ class InventoryService:
         await self.vehicle_repo.delete(conn, vehicle_id)
 
     async def get_expiring_docs(self, conn: Connection, days: int) -> list[ExpiringDocItem]:
+        # Expiry doc list — no image URLs in this response, no presigning needed
         vehicles = await self.vehicle_repo.get_expiring_docs(conn, days)
         today = date.today()
         results = []
