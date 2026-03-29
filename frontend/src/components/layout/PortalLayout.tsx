@@ -55,11 +55,7 @@ export const PortalLayout: React.FC = () => {
               key={item.to}
               to={item.to}
               end={item.end}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                  isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-900'
-                }`
-              }
+              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
             >
               <item.icon className="w-5 h-5" />
               <span className="text-[10px] font-medium">{item.label}</span>

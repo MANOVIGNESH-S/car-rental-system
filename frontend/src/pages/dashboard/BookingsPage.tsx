@@ -10,10 +10,12 @@ import {
   LogOut, 
   AlertTriangle, 
   Eye,
+  CreditCard,
   Loader2
 } from 'lucide-react';
 import { useAdminBookings } from '../../features/bookings/hooks/useAdminBookings';
 import { useCheckinCheckout } from '../../features/bookings/hooks/useCheckinCheckout';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Badge } from '../../components/ui/Badge';
 import { 
   formatCurrency, 
@@ -24,6 +26,9 @@ import type { AdminBookingListItem } from '../../types';
 
 export default function BookingsPage() {
   const navigate = useNavigate();
+  
+  // FIX: Added the usePageTitle hook call here to resolve the ESLint warning
+  usePageTitle('Bookings');
   
   // Hooks
   const { 
@@ -250,97 +255,109 @@ const handleConfirmCheckin = async () => {
               <p className="text-sm text-gray-500">No bookings found.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Customer</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Vehicle</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Branch</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Period</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Amount</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Status</th>
-                  <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {bookings.map((booking) => (
-                  <tr key={booking.booking_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="text-sm font-medium text-gray-900">{booking.user_name || 'Unknown'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{booking.user_phone || 'N/A'}</p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="text-sm text-gray-900">{booking.vehicle_brand} {booking.vehicle_model}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">ID: {booking.vehicle_id.substring(0, 8)}...</p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="neutral">{booking.branch_tag}</Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-start gap-2">
-                        <CalendarDays className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                        <div className="text-xs text-gray-700 flex flex-col space-y-1">
-                          <span>{formatDateTime(booking.start_time)}</span>
-                          <span className="text-gray-400">→ {formatDateTime(booking.end_time)}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {formatCurrency(booking.total_price)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col items-start gap-1">
-                        <Badge variant={getBookingStatusVariant(booking.status)}>
-                          {booking.status}
-                        </Badge>
-                        {booking.is_physically_verified && (
-                          <span className="text-[10px] text-green-600 font-medium">Verified</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
-                        {booking.status === 'reserved' && (
-                          <button
-                            onClick={() => openCheckin(booking)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
-                          >
-                            <LogIn className="w-4 h-4" />
-                            Check In
-                          </button>
-                        )}
-                        {booking.status === 'active' && (
-                          <button
-                            onClick={() => openCheckout(booking)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded-lg transition-colors"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            Check Out
-                          </button>
-                        )}
-                        {booking.status === 'completed' && (
-                          <button
-                            onClick={() => navigate(`/dashboard/damage/${booking.booking_id}`)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-lg border border-gray-200 transition-colors"
-                          >
-                            <AlertTriangle className="w-4 h-4" />
-                            View Damage
-                          </button>
-                        )}
-                        
-                        <button
-                          onClick={() => navigate(`/dashboard/bookings/${booking.booking_id}`)}
-                          className="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg border border-gray-200 transition-colors"
-                          title="Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Customer</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Vehicle</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Branch</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Period</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Amount</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium">Status</th>
+                    <th className="px-6 py-3 text-xs uppercase text-gray-500 font-medium text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {bookings.map((booking) => (
+                    <tr key={booking.booking_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <p className="text-sm font-medium text-gray-900">{booking.user_name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{booking.user_phone || 'N/A'}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <p className="text-sm text-gray-900">{booking.vehicle_brand} {booking.vehicle_model}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">ID: {booking.vehicle_id.substring(0, 8)}...</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant="neutral">{booking.branch_tag}</Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-start gap-2">
+                          <CalendarDays className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                          <div className="text-xs text-gray-700 flex flex-col space-y-1">
+                            <span>{formatDateTime(booking.start_time)}</span>
+                            <span className="text-gray-400">→ {formatDateTime(booking.end_time)}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {formatCurrency(booking.total_price)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge variant={getBookingStatusVariant(booking.status)}>
+                            {booking.status}
+                          </Badge>
+                          {booking.is_physically_verified && (
+                            <span className="text-[10px] text-green-600 font-medium">Verified</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
+                          {booking.status === 'reserved' && (
+                            <button
+                              onClick={() => openCheckin(booking)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                              <LogIn className="w-4 h-4" />
+                              Check In
+                            </button>
+                          )}
+                          {booking.status === 'active' && (
+                            <button
+                              onClick={() => openCheckout(booking)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                              <LogOut className="w-4 h-4" />
+                              Check Out
+                            </button>
+                          )}
+                          {booking.status === 'completed' && (
+                            <button
+                              onClick={() => navigate(`/dashboard/damage/${booking.booking_id}`)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-lg border border-gray-200 transition-colors"
+                            >
+                              <AlertTriangle className="w-4 h-4" />
+                              View Damage
+                            </button>
+                          )}
+
+                          {(booking.status === 'active' || booking.status === 'completed') && (
+                            <button
+                              onClick={() => navigate(`/dashboard/payments/${booking.booking_id}`)}
+                              className="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg border border-gray-200 transition-colors"
+                              title="Payment Ledger"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                            </button>
+                          )}
+                          
+                          <button
+                            onClick={() => navigate(`/dashboard/bookings/${booking.booking_id}`)}
+                            className="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg border border-gray-200 transition-colors"
+                            title="Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

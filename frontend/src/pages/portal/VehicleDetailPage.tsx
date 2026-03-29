@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Fuel, Info, CalendarDays, ShieldCheck } from 'lucide-react';
 import { useVehicleDetail } from '../../features/inventory/hooks/useVehicleDetail';
 import { useAuth } from '../../context/AuthContext';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { 
@@ -15,6 +16,7 @@ const VehicleDetailPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { vehicle, isLoading, error } = useVehicleDetail(vehicleId || '');
+  usePageTitle(vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Vehicle');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   if (isLoading) return <Spinner />;

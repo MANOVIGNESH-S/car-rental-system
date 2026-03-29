@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getUsers, suspendUser, updateUserRole } from '../services/adminService';
 import type { AdminUserListItem, UserRole } from '../../../types';
+import { useToast } from '../../../context/ToastContext';
 
 interface UsersFilters {
   kyc_status?: string;
@@ -14,13 +15,12 @@ export function useUsers() {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [filters, setFilters] = useState<UsersFilters>({});
+  const toast = useToast();
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const response = await getUsers({
         ...filters,
@@ -31,11 +31,12 @@ export function useUsers() {
       setTotal(response.total);
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setError(e.response?.data?.detail || 'Failed to fetch users');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [page, filters]);
+  }, [page, filters, toast]);
 
   useEffect(() => {
     fetchUsers();
@@ -49,11 +50,13 @@ export function useUsers() {
           user.user_id === userId ? { ...user, is_suspended: isSuspended } : user
         )
       );
+      toast.success('User updated');
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      throw new Error(e.response?.data?.detail || 'Failed to suspend user');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Failed', errorMessage);
     }
-  }, []);
+  }, [toast]);
 
   const changeRole = useCallback(async (userId: string, role: UserRole): Promise<void> => {
     try {
@@ -63,17 +66,18 @@ export function useUsers() {
           user.user_id === userId ? { ...user, role } : user
         )
       );
+      toast.success('Role updated');
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      throw new Error(e.response?.data?.detail || 'Failed to update user role');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Failed', errorMessage);
     }
-  }, []);
+  }, [toast]);
 
   return {
     users,
     total,
     isLoading,
-    error,
     page,
     setPage,
     filters,

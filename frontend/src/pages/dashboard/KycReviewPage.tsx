@@ -8,6 +8,7 @@ import {
   Loader2 
 } from 'lucide-react';
 import { useKycReview } from '../../features/kyc/hooks/useKycReview';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Badge } from '../../components/ui/Badge';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 
@@ -20,6 +21,7 @@ export default function KycReviewPage() {
     reviewError, 
     review 
   } = useKycReview();
+  usePageTitle('KYC Review');
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [decision, setDecision] = useState<'verified' | 'failed' | null>(null);

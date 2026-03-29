@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Loader2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Car, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useLogin } from '../../features/auth/hooks/useLogin';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const { login, isLoading, error } = useLogin();
+  const { login, isLoading } = useLogin();
+  usePageTitle('Sign In');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,13 +33,6 @@ const LoginPage: React.FC = () => {
             Sign in to your account
           </p>
         </div>
-
-        {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-6 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1.5">

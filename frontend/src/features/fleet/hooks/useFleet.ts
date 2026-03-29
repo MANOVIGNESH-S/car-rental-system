@@ -7,6 +7,7 @@ import {
  type  ExpiringDocItem,
 } from '../services/fleetService';
 import type { VehicleListItem, VehicleStatus } from '../../../types/index';
+import { useToast } from '../../../context/ToastContext';
 
 type FleetFilters = {
   branch_tag?: string;
@@ -18,24 +19,24 @@ type FleetFilters = {
 export function useFleet() {
   const [vehicles, setVehicles] = useState<VehicleListItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
   
   const [expiringDocs, setExpiringDocs] = useState<ExpiringDocItem[]>([]);
   const [isLoadingExpiry, setIsLoadingExpiry] = useState<boolean>(false);
 
   const fetchVehicles = useCallback(async (filters?: FleetFilters) => {
     setIsLoading(true);
-    setError(null);
     try {
       const data = await getFleetVehicles(filters);
       setVehicles(data);
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setError(e.response?.data?.detail || 'Failed to fetch vehicles');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Action failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const fetchExpiringDocs = useCallback(async (days: number = 30) => {
     setIsLoadingExpiry(true);
@@ -44,28 +45,42 @@ export function useFleet() {
       setExpiringDocs(data);
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setError(e.response?.data?.detail || 'Failed to fetch expiring documents');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Action failed', errorMessage);
     } finally {
       setIsLoadingExpiry(false);
     }
-  }, []);
+  }, [toast]);
 
-  // Removed unnecessary try/catch wrappers here to fix TS warnings
   const removeVehicle = useCallback(async (vehicleId: string) => {
-    await deleteVehicle(vehicleId);
-    setVehicles((prev) => prev.filter((v) => v.vehicle_id !== vehicleId));
-  }, []);
+    try {
+      await deleteVehicle(vehicleId);
+      setVehicles((prev) => prev.filter((v) => v.vehicle_id !== vehicleId));
+      toast.success('Vehicle deleted');
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Action failed', errorMessage);
+    }
+  }, [toast]);
 
   const changeStatus = useCallback(async (vehicleId: string, status: VehicleStatus) => {
-    const updatedVehicle = await updateVehicleStatus(vehicleId, status);
-    setVehicles((prev) =>
-      prev.map((v) =>
-        v.vehicle_id === vehicleId
-          ? { ...v, vehicle_status: updatedVehicle.vehicle_status }
-          : v
-      )
-    );
-  }, []);
+    try {
+      const updatedVehicle = await updateVehicleStatus(vehicleId, status);
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.vehicle_id === vehicleId
+            ? { ...v, vehicle_status: updatedVehicle.vehicle_status }
+            : v
+        )
+      );
+      toast.success('Status updated');
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Action failed', errorMessage);
+    }
+  }, [toast]);
 
   useEffect(() => {
     fetchVehicles();
@@ -75,7 +90,6 @@ export function useFleet() {
   return {
     vehicles,
     isLoading,
-    error,
     expiringDocs,
     isLoadingExpiry,
     fetchVehicles,

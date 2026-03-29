@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getJobs, retryJob } from '../services/adminService';
 import type { AsyncJob, JobStatus } from '../../../types';
+import { useToast } from '../../../context/ToastContext';
 
 interface JobsFilters {
   job_type?: string;
@@ -13,14 +14,13 @@ export function useJobs() {
   const [jobs, setJobs] = useState<AsyncJob[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [filters, setFilters] = useState<JobsFilters>({});
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const toast = useToast();
 
   const fetchJobs = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
-    setError(null);
     try {
       const response = await getJobs({
         ...filters,
@@ -31,11 +31,12 @@ export function useJobs() {
       setTotal(response.total);
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setError(e.response?.data?.detail || 'Failed to fetch jobs');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Retry failed', errorMessage);
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, [page, filters]);
+  }, [page, filters, toast]);
 
   // Initial fetch and fetch on page/filter change
   useEffect(() => {
@@ -73,19 +74,20 @@ export function useJobs() {
             : job
         )
       );
+      toast.success('Job queued', 'Retry triggered successfully.');
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      throw new Error(e.response?.data?.detail || 'Failed to retry job');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Retry failed', errorMessage);
     } finally {
       setRetryingId(null);
     }
-  }, []);
+  }, [toast]);
 
   return {
     jobs,
     total,
     isLoading,
-    error,
     page,
     setPage,
     filters,

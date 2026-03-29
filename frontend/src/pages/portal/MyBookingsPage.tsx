@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CalendarDays, CreditCard, Car, ChevronRight } from 'lucide-react';
 import { useMyBookings } from '../../features/bookings/hooks/useMyBookings';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { formatCurrency, formatDateTime, getBookingStatusVariant } from '../../utils/vehicleHelpers';
@@ -9,6 +10,7 @@ import { formatCurrency, formatDateTime, getBookingStatusVariant } from '../../u
 const MyBookingsPage = () => {
   const navigate = useNavigate();
   const { bookings, isLoading, error, statusFilter, setStatusFilter } = useMyBookings();
+  usePageTitle('My Bookings');
 
   const tabs = [
     { id: '', label: 'All' },

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useVehicleDetail } from '../../features/inventory/hooks/useVehicleDetail';
 import { useCreateBooking } from '../../features/bookings/hooks/useCreateBooking';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Spinner } from '../../components/ui/Spinner';
 import { formatCurrency } from '../../utils/vehicleHelpers';
 import { type PaymentMethod } from '../../types';
@@ -15,7 +16,8 @@ const BookingPage = () => {
   const navigate = useNavigate();
   
   const { vehicle, isLoading: vehicleLoading, error: vehicleError } = useVehicleDetail(vehicleId || '');
-  const { submitBooking, isLoading: isSubmitting, error: bookingError } = useCreateBooking();
+  const { submitBooking, isLoading: isSubmitting } = useCreateBooking();
+  usePageTitle('Book Vehicle');
 
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -103,8 +105,8 @@ const BookingPage = () => {
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Book this vehicle</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="lg:col-span-1 order-2 lg:order-1">
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div className="aspect-video bg-gray-100 flex items-center justify-center text-gray-400">
                 <Car className="w-12 h-12" />
@@ -125,7 +127,7 @@ const BookingPage = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-2 order-1 lg:order-2">
             <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -165,8 +167,6 @@ const BookingPage = () => {
                     <div className="pt-2 border-t border-gray-200 flex justify-between"><span className="font-bold text-gray-900">Total:</span><span className="font-bold text-blue-600">{formatCurrency(pricing.rentalFee + pricing.securityDeposit)}</span></div>
                   </div>
                 )}
-
-                {bookingError && <div className="rounded-lg bg-red-50 border border-red-200 p-4"><p className="text-sm text-red-700">{bookingError}</p></div>}
 
                 <button type="submit" disabled={isSubmitting || !startTime || !endTime || !paymentMethod} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Booking'}

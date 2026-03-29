@@ -9,12 +9,14 @@ import {
   ChevronUp 
 } from 'lucide-react';
 import { useInventory } from '../../features/inventory/hooks/useInventory';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { VehicleCard } from '../../features/inventory/components/VehicleCard';
 import { Spinner } from '../../components/ui/Spinner';
 
 const VehicleListPage = () => {
   const navigate = useNavigate();
   const { vehicles, isLoading, error, setFilters } = useInventory();
+  usePageTitle('Browse Vehicles');
   
   // Local state for form fields
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -84,7 +86,7 @@ const VehicleListPage = () => {
         </div>
 
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             {/* Branch */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-500">Location</label>
