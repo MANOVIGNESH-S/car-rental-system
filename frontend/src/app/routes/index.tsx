@@ -1,5 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { AuthProvider } from '../../context/AuthContext';
+import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
+import { AuthProvider, useAuth } from '../../context/AuthContext';
 import LoginPage from '../../pages/auth/LoginPage';
 import RegisterPage from '../../pages/auth/RegisterPage';
 import PortalLayout from '../../components/layout/PortalLayout';
@@ -22,6 +22,9 @@ import BookingDetailPage from '../../pages/portal/BookingDetailPage';
 // --- DASHBOARD IMPORTS ---
 import OverviewPage from '../../pages/dashboard/OverviewPage';
 import FleetPage from '../../pages/dashboard/FleetPage';
+import BookingsPage from '../../pages/dashboard/BookingsPage';
+import DamagePage from '../../pages/dashboard/DamagePage';
+import KycReviewPage from '../../pages/dashboard/KycReviewPage';
 
 const renderPlaceholder = (title: string) => (
   <div className="p-8">
@@ -30,6 +33,30 @@ const renderPlaceholder = (title: string) => (
   </div>
 );
 
+// --- NEW COMPONENTS ---
+export const AdminRoute = () => {
+  const { user } = useAuth();
+  
+  if (user?.role !== 'Admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <Outlet />;
+};
+
+export const BookingStaffDetailPage = () => {
+  const { booking_id } = useParams<{ booking_id: string }>();
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <h1 className="text-2xl font-bold text-gray-900">Booking Details</h1>
+      <p className="mt-2 text-sm text-gray-500">Booking ID: {booking_id}</p>
+    </div>
+  );
+};
+
+
+// eslint-disable-next-line react-refresh/only-export-components
 export const router = createBrowserRouter([
   {
     element: (
@@ -104,14 +131,35 @@ export const router = createBrowserRouter([
             path: 'fleet',
             element: <FleetPage />,
           },
-          // Placeholders for upcoming dashboard features
           {
             path: 'bookings',
-            element: renderPlaceholder('Staff Booking Management'),
+            element: <BookingsPage />,
+          },
+          {
+            path: 'bookings/:booking_id',
+            element: <BookingStaffDetailPage />,
+          },
+          {
+            path: 'damage/:bookingId',
+            element: <DamagePage />,
           },
           {
             path: 'kyc-review',
-            element: renderPlaceholder('KYC Review'),
+            element: <KycReviewPage />,
+          },
+          // Admin Only Routes
+          {
+            element: <AdminRoute />,
+            children: [
+              {
+                path: 'users',
+                element: <div className="p-6">Users Management (Admin Only)</div>,
+              },
+              {
+                path: 'jobs',
+                element: <div className="p-6">System Jobs (Admin Only)</div>,
+              },
+            ],
           },
         ],
       },

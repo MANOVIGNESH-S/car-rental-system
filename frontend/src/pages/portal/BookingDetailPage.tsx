@@ -1,3 +1,5 @@
+// src/pages/portal/BookingDetailPage.tsx
+
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
@@ -8,9 +10,12 @@ import {
   CreditCard, 
   AlertCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { useBookingDetail } from '../../features/bookings/hooks/useBookingDetail';
+import { uploadPostRentalImages } from '../../features/damage/services/damageService';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { formatCurrency, formatDateTime, getBookingStatusVariant } from '../../utils/vehicleHelpers';
@@ -20,6 +25,7 @@ const BookingDetailPage = () => {
   const navigate = useNavigate();
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
+  // Hook for fetching booking data
   const { 
     booking, 
     isLoading, 
@@ -28,6 +34,18 @@ const BookingDetailPage = () => {
     isCancelling, 
     cancelError 
   } = useBookingDetail(bookingId || '');
+
+  // Local state for Customer Post-Rental Image Upload
+  const [postRentalFiles, setPostRentalFiles] = useState<{
+    front_exterior?: File; 
+    rear_exterior?: File; 
+    left_exterior?: File; 
+    right_exterior?: File; 
+    dashboard?: File;
+  }>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   if (isLoading) return <Spinner />;
 
@@ -49,9 +67,39 @@ const BookingDetailPage = () => {
     setShowConfirmCancel(false);
   };
 
+  const handleUploadImages = async () => {
+    setUploadError('');
+    
+    // Validate all 5 images are present
+    if (!postRentalFiles.front_exterior || !postRentalFiles.rear_exterior || 
+        !postRentalFiles.left_exterior || !postRentalFiles.right_exterior || 
+        !postRentalFiles.dashboard) {
+      setUploadError("Please upload all 5 photos of the vehicle before submitting.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Safely cast the type to satisfy strict TypeScript rules
+      await uploadPostRentalImages(booking.booking_id, postRentalFiles as {
+        front_exterior: File;
+        rear_exterior: File;
+        left_exterior: File;
+        right_exterior: File;
+        dashboard: File;
+      });
+      setUploadSuccess(true);
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setUploadError(e.response?.data?.detail || "Failed to upload images. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* 1. HEADER */}
         <div className="mb-6">
           <Link to="/portal/bookings" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 mb-2 transition-colors">
@@ -115,7 +163,68 @@ const BookingDetailPage = () => {
             )}
           </div>
 
-          {/* 3. BOOKING INFO CARD */}
+          {/* 3. CUSTOMER DROP-OFF IMAGE UPLOAD (ONLY VISIBLE WHEN ACTIVE) */}
+          {booking.status === 'active' && (
+            <div className="bg-white border border-blue-200 rounded-xl p-4 sm:p-6 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Camera className="w-5 h-5 text-blue-600" />
+                Ready to Return the Vehicle?
+              </h2>
+              
+              {uploadSuccess ? (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">Images Uploaded Successfully!</p>
+                    <p className="text-sm text-green-700 mt-1">Please hand the keys back to our staff to complete your check-out.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-5">
+                    Before returning the keys to our staff, please upload 5 clear photos of the vehicle's current condition to finalize your rental.
+                  </p>
+
+                  {uploadError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {uploadError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+                    {['front_exterior', 'rear_exterior', 'left_exterior', 'right_exterior', 'dashboard'].map((side) => (
+                      <div key={side} className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 capitalize">{side.replace('_', ' ')}</label>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              setPostRentalFiles(prev => ({ ...prev, [side]: e.target.files![0] }));
+                            }
+                          }}
+                          className="w-full text-xs file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-lg bg-gray-50"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={handleUploadImages}
+                    disabled={isUploading}
+                    className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    Submit Drop-off Images
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 4. RENTAL INFO CARD */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-base font-semibold text-gray-900 mb-4">Rental Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -161,7 +270,7 @@ const BookingDetailPage = () => {
             </div>
           </div>
 
-          {/* 4. PRICE BREAKDOWN CARD */}
+          {/* 5. PRICE BREAKDOWN CARD */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-base font-semibold text-gray-900 mb-4">Payment Summary</h2>
             <div className="space-y-3">
@@ -180,7 +289,7 @@ const BookingDetailPage = () => {
             </div>
           </div>
 
-          {/* 5. PAYMENT HISTORY */}
+          {/* 6. PAYMENT HISTORY */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-gray-400" /> Payment Records
