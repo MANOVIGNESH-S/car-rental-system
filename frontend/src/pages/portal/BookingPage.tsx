@@ -21,7 +21,6 @@ const BookingPage = () => {
   const [endTime, setEndTime] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
-  // Min: today + 1 hour, rounded to next hour, formatted for datetime-local
   const minStart = useMemo(() => {
     const d = new Date();
     d.setHours(d.getHours() + 1, 0, 0, 0); 
@@ -73,7 +72,6 @@ const BookingPage = () => {
     e.preventDefault();
     if (!vehicleId || !startTime || !endTime || !paymentMethod) return;
 
-    // Send the raw local string from the input directly to the hook
     submitBooking({
       vehicle_id: vehicleId,
       start_time: startTime,
@@ -165,7 +163,6 @@ const BookingPage = () => {
                     <div className="flex justify-between text-sm text-gray-700"><span>Rental fee:</span><span>{formatCurrency(pricing.rentalFee)}</span></div>
                     <div className="flex justify-between text-sm text-gray-700"><span>Security deposit:</span><span>{formatCurrency(pricing.securityDeposit)}</span></div>
                     <div className="pt-2 border-t border-gray-200 flex justify-between"><span className="font-bold text-gray-900">Total:</span><span className="font-bold text-blue-600">{formatCurrency(pricing.rentalFee + pricing.securityDeposit)}</span></div>
-                    <p className="text-[10px] text-gray-400 italic mt-2">Actual total confirmed by server on booking</p>
                   </div>
                 )}
 
