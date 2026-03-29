@@ -25,6 +25,9 @@ import FleetPage from '../../pages/dashboard/FleetPage';
 import BookingsPage from '../../pages/dashboard/BookingsPage';
 import DamagePage from '../../pages/dashboard/DamagePage';
 import KycReviewPage from '../../pages/dashboard/KycReviewPage';
+import UsersPage from '../../pages/dashboard/UsersPage';
+import JobsPage from '../../pages/dashboard/JobsPage';
+import PaymentsPage from '../../pages/dashboard/PaymentsPage';
 
 const renderPlaceholder = (title: string) => (
   <div className="p-8">
@@ -43,6 +46,7 @@ export const AdminRoute = () => {
   
   return <Outlet />;
 };
+
 
 export const BookingStaffDetailPage = () => {
   const { booking_id } = useParams<{ booking_id: string }>();
@@ -140,6 +144,10 @@ export const router = createBrowserRouter([
             element: <BookingStaffDetailPage />,
           },
           {
+            path: 'payments/:bookingId',
+            element: <PaymentsPage />,
+          },
+          {
             path: 'damage/:bookingId',
             element: <DamagePage />,
           },
@@ -153,11 +161,11 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: 'users',
-                element: <div className="p-6">Users Management (Admin Only)</div>,
+                element: <UsersPage />,
               },
               {
                 path: 'jobs',
-                element: <div className="p-6">System Jobs (Admin Only)</div>,
+                element: <JobsPage />,
               },
             ],
           },
