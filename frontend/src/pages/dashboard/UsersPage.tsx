@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Eye, Loader2 } from 'lucide-react';
 import { useUsers } from '../../features/admin/hooks/useUsers';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 import type { UserRole, KYCStatus, AdminUserListItem } from '../../types';
 
@@ -36,7 +37,6 @@ export default function UsersPage() {
     users,
     total,
     isLoading,
-    error,
     page,
     setPage,
     filters,
@@ -44,6 +44,7 @@ export default function UsersPage() {
     suspend,
     changeRole,
   } = useUsers();
+  usePageTitle('User Management');
 
   const [roleUpdating, setRoleUpdating] = useState<Record<string, boolean>>({});
   const [roleSuccess, setRoleSuccess] = useState<Record<string, boolean>>({});
@@ -170,17 +171,11 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* ERROR STATE */}
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
       {/* 3. USERS TABLE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
@@ -200,7 +195,7 @@ export default function UsersPage() {
                     </div>
                   </td>
                 </tr>
-              ) : users.length === 0 && !error ? (
+              ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <p className="text-sm text-gray-500">No items found.</p>

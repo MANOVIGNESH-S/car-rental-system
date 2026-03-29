@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Car, CheckCircle2, Wrench, AlertTriangle, Plus, CalendarDays, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFleet } from '../../features/fleet/hooks/useFleet';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 
 export function OverviewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { vehicles, expiringDocs, isLoading, error } = useFleet();
+  const { vehicles, expiringDocs, isLoading } = useFleet();
+  usePageTitle('Dashboard');
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -32,14 +34,6 @@ export function OverviewPage() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-        <p className="text-sm text-red-700">{error}</p>
       </div>
     );
   }

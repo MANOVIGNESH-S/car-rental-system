@@ -18,7 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isAdmin = user?.role === 'Admin';
 
@@ -34,22 +34,22 @@ export const DashboardLayout: React.FC = () => {
     ] : [])
   ];
 
-  const closeSidebar = () => setIsSidebarOpen(false);
+  const closeSidebar = () => setIsMobileMenuOpen(false);
 
   return (
     <div className="min-h-screen bg-gray-50 flex overflow-hidden">
       {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
+      {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-gray-900/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-slate-800 text-slate-300 transform transition-transform duration-200 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-800 text-slate-300 transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
       >
         <div className="h-16 flex items-center px-6 border-b border-slate-700 bg-slate-900/50">
@@ -58,7 +58,7 @@ export const DashboardLayout: React.FC = () => {
             <span className="text-xs text-slate-400 font-medium tracking-wider">STAFF PORTAL</span>
           </div>
           <button 
-            className="ml-auto md:hidden text-slate-400 hover:text-white"
+            className="ml-auto lg:hidden text-slate-400 hover:text-white"
             onClick={closeSidebar}
           >
             <X className="w-6 h-6" />
@@ -104,8 +104,8 @@ export const DashboardLayout: React.FC = () => {
         {/* Topbar */}
         <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-30">
           <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden text-gray-500 hover:text-gray-700 focus:outline-none"
           >
             <Menu className="w-6 h-6" />
           </button>

@@ -10,6 +10,7 @@ import {
   Image as ImageIcon 
 } from 'lucide-react';
 import { useDamage } from '../../features/damage/hooks/useDamage';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 export default function DamagePage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -23,6 +24,7 @@ export default function DamagePage() {
     resolveResult, 
     resolve 
   } = useDamage(bookingId || '');
+  usePageTitle('Damage Assessment');
 
   const [decision, setDecision] = useState<'clear' | 'charge' | null>(null);
   const [notes, setNotes] = useState('');

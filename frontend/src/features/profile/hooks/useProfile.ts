@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { getMyProfile, updateMyProfile, type UpdateProfileResponse } from '../services/profileService';
 import { useAuth } from '../../../context/AuthContext';
 import type { Profile, UpdateProfileRequest } from '../../../types';
+import { useToast } from '../../../context/ToastContext';
 
 export const useProfile = () => {
   const { user } = useAuth();
+  const toast = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  const [updateSuccess, setUpdateSuccess] = useState<boolean>(false);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -38,18 +38,16 @@ export const useProfile = () => {
     );
 
     if (!hasValidField) {
-      setUpdateError('Please provide at least one field to update.');
+      toast.error('Update failed', 'Please provide at least one field to update.');
       return false;
     }
 
     setIsUpdating(true);
-    setUpdateError(null);
-    setUpdateSuccess(false);
 
     try {
       const response: UpdateProfileResponse = await updateMyProfile(data);
       
-      setUpdateSuccess(true);
+      toast.success('Profile updated');
       setProfile((prevProfile) => {
         if (!prevProfile) return null;
         return {
@@ -61,7 +59,8 @@ export const useProfile = () => {
       return true;
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setUpdateError(e.response?.data?.detail || 'Failed to update profile');
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Update failed', errorMessage);
       return false;
     } finally {
       setIsUpdating(false);
@@ -73,8 +72,6 @@ export const useProfile = () => {
     isLoading,
     error,
     isUpdating,
-    updateError,
-    updateSuccess,
     updateProfile,
   };
 };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil, LogOut, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useProfile } from '../../features/profile/hooks/useProfile';
 import { useAuth } from '../../context/AuthContext';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { KycStatusBanner } from '../../features/kyc/components/KycStatusBanner';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 
@@ -12,10 +13,9 @@ const ProfilePage = () => {
     isLoading,
     error,
     isUpdating,
-    updateError,
-    updateSuccess,
     updateProfile,
   } = useProfile();
+  usePageTitle('My Profile');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -126,19 +126,12 @@ const ProfilePage = () => {
           )}
         </div>
 
-        {updateSuccess && !isEditing && (
-          <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-            <p className="text-sm text-green-800 font-medium">Profile updated successfully!</p>
-          </div>
-        )}
-
         {isEditing ? (
           <div className="space-y-5">
-            {(validationError || updateError) && (
+            {validationError && (
               <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-red-700">{validationError || updateError}</p>
+                <p className="text-sm text-red-700">{validationError}</p>
               </div>
             )}
 

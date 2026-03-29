@@ -3,6 +3,7 @@ import { Car, CalendarDays, ShieldCheck, User, ArrowRight, Loader2 } from 'lucid
 import { useAuth } from '../../context/AuthContext';
 import { useKYC } from '../../features/kyc/hooks/useKYC';
 import { useMyBookings } from '../../features/bookings/hooks/useMyBookings';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { KycStatusBanner } from '../../features/kyc/components/KycStatusBanner';
 import { Badge } from '../../components/ui/Badge';
 import { formatDateTime, getBookingStatusVariant } from '../../utils/vehicleHelpers';
@@ -13,6 +14,7 @@ const HomePage = () => {
   const { user } = useAuth();
   const { kycStatus, isLoadingStatus } = useKYC();
   const { bookings, isLoading: isLoadingBookings } = useMyBookings();
+  usePageTitle('Home');
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',

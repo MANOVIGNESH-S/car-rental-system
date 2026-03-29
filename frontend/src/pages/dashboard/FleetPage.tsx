@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, X, Loader2, Car } from 'lucide-react';
 import { useFleet } from '../../features/fleet/hooks/useFleet';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { getFleetVehicleById } from '../../features/fleet/services/fleetService';
 import type { VehicleStatus, VehicleAdmin } from '../../types/index';
 import { FleetTable } from '../../features/fleet/components/FleetTable';
@@ -33,7 +34,6 @@ export function FleetPage() {
   const { 
     vehicles, 
     isLoading, 
-    error, 
     expiringDocs, 
     isLoadingExpiry, 
     fetchVehicles, 
@@ -41,6 +41,7 @@ export function FleetPage() {
     removeVehicle, 
     changeStatus 
   } = useFleet();
+  usePageTitle('Fleet Management');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleAdmin | null>(null);
@@ -136,14 +137,6 @@ export function FleetPage() {
     if (statusFilter === 'all') return vehicles;
     return vehicles.filter(v => v.vehicle_status === statusFilter);
   }, [vehicles, statusFilter]);
-
-  if (error) {
-    return (
-      <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-        <p className="text-sm text-red-700">{error}</p>
-      </div>
-    );
-  }
 
   const inputClass = "w-full sm:w-auto px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400";
   const selectClass = "w-full sm:w-auto px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer";

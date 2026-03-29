@@ -15,6 +15,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useBookingDetail } from '../../features/bookings/hooks/useBookingDetail';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { uploadPostRentalImages } from '../../features/damage/services/damageService';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
@@ -34,6 +35,7 @@ const BookingDetailPage = () => {
     isCancelling, 
     cancelError 
   } = useBookingDetail(bookingId || '');
+  usePageTitle('Booking Details');
 
   // Local state for Customer Post-Rental Image Upload
   const [postRentalFiles, setPostRentalFiles] = useState<{

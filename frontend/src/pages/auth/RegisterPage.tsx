@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Loader2, XCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useRegister } from '../../features/auth/hooks/useRegister';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import type { RegisterRequest } from '../../types';
 
 const RegisterPage: React.FC = () => {
@@ -15,7 +16,8 @@ const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
-  const { register, isLoading, error, success } = useRegister();
+  const { register, isLoading } = useRegister();
+  usePageTitle('Create Account');
 
   const validate = () => {
     const errors: Record<string, string> = {};
@@ -39,13 +41,13 @@ const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || success) return;
+    if (isLoading) return;
     if (validate()) {
       await register(formData);
     }
   };
 
-  const isFormDisabled = isLoading || success;
+  const isFormDisabled = isLoading;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -59,20 +61,6 @@ const RegisterPage: React.FC = () => {
             Start renting cars today
           </p>
         </div>
-
-        {success && (
-          <div className="rounded-lg bg-green-50 border border-green-200 p-4 mb-6 flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-            <p className="text-sm text-green-700">Account created! Redirecting to login...</p>
-          </div>
-        )}
-
-        {error && !success && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-6 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">

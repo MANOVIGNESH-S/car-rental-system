@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { loginUser } from '../services/authService';
 import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   
   const { login: contextLogin } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
-    setError(null);
 
     try {
       const data = await loginUser({ username: email, password });
@@ -30,17 +29,10 @@ export const useLogin = () => {
       ) {
         navigate('/dashboard');
       }
-    } catch (err: unknown) {
-      let errorMessage = 'Invalid email or password';
-
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail;
-        if (typeof detail === 'string') {
-          errorMessage = detail;
-        }
-      }
-
-      setError(errorMessage);
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Login failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -49,6 +41,5 @@ export const useLogin = () => {
   return {
     login,
     isLoading,
-    error,
   };
 };

@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useJobs } from '../../features/admin/hooks/useJobs';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 import type { JobStatus } from '../../types';
 
@@ -68,7 +69,6 @@ export default function JobsPage() {
     jobs,
     total,
     isLoading,
-    error,
     page,
     setPage,
     filters,
@@ -76,6 +76,7 @@ export default function JobsPage() {
     retry,
     retryingId,
   } = useJobs();
+  usePageTitle('Background Jobs');
 
   // 2. STATS CALCULATION
   const stats = {
@@ -182,12 +183,6 @@ export default function JobsPage() {
         )}
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
       {/* 4. JOBS TABLE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -213,7 +208,7 @@ export default function JobsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : jobs.length === 0 && !error ? (
+              ) : jobs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">

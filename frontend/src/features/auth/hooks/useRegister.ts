@@ -1,47 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { registerUser } from '../services/authService';
 import { type RegisterRequest } from '../../../types';
+import { useToast } from '../../../context/ToastContext';
 
 export const useRegister = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
   
   const navigate = useNavigate();
+  const toast = useToast();
 
   const register = async (data: RegisterRequest): Promise<void> => {
     setIsLoading(true);
-    setError(null);
-    setSuccess(false);
 
     try {
       await registerUser(data);
-      setSuccess(true);
+      toast.success('Account created!', 'Redirecting to login...');
 
       // Brief delay so the user can see the success badge/message
       setTimeout(() => {
         navigate('/login');
       }, 1500);
       
-    } catch (err: unknown) {
-      let errorMessage = 'Registration failed. Please try again.';
-
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail;
-        
-        if (typeof detail === 'string') {
-          errorMessage = detail;
-        } else if (Array.isArray(detail)) {
-          // Handle FastAPI/Pydantic style validation arrays
-          errorMessage = detail
-            .map((e: { msg: string }) => e.msg)
-            .join(', ');
-        }
-      }
-
-      setError(errorMessage);
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
+      toast.error('Registration failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +34,5 @@ export const useRegister = () => {
   return {
     register,
     isLoading,
-    error,
-    success,
   };
 };

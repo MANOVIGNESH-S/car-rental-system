@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { usePayments } from '../../features/admin/hooks/usePayments';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatCurrency, formatDateTime } from '../../utils/vehicleHelpers';
 import type { PaymentMethod } from '../../types';
 
@@ -59,6 +60,7 @@ export default function PaymentsPage() {
     processRefund,
     resetRefund,
   } = usePayments(bookingId || '');
+  usePageTitle('Payment Ledger');
 
   const [amount, setAmount] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
