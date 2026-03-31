@@ -2,10 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/routes';
-import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { Toast } from './components/ui/Toast';
-import { ErrorBoundary } from './components/ui/ErrorBoundary'; // <-- Added import
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -16,14 +15,11 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AuthProvider>
+    <ErrorBoundary>
       <ToastProvider>
-        {/* <-- Wrapped RouterProvider in ErrorBoundary --> */}
-        <ErrorBoundary>
-          <RouterProvider router={router} />
-        </ErrorBoundary>
+        <RouterProvider router={router} />
         <Toast />
       </ToastProvider>
-    </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>
 );

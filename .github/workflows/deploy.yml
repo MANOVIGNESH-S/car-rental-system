@@ -1,0 +1,55 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            APP_DIR="/home/ubuntu/app"
+
+            echo " Starting deployment..."
+
+            # install docker if not exists
+            if ! command -v docker &> /dev/null
+            then
+              sudo apt update -y
+              sudo apt install -y docker.io docker-compose-plugin git
+              sudo systemctl start docker
+              sudo systemctl enable docker
+            fi
+
+            mkdir -p $APP_DIR
+            cd $APP_DIR
+
+            # clone repo first time
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/MANOVIGNESH-S/car-rental-system.git .
+            fi
+
+            # pull latest
+            git fetch origin
+            git checkout development
+            git pull origin development
+
+            # write env
+            echo "${{ secrets.ENV_FILE }}" > backend/.env
+
+            # restart containers
+            sudo docker compose down || true
+            sudo docker compose up --build -d
+
+            echo " Deployment completed!"

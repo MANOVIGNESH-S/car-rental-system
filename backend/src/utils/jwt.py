@@ -22,3 +22,19 @@ def decode_access_token(token: str) -> dict:
         return payload
     except JWTError:
         raise UnauthorizedError("Could not validate credentials")
+
+def decode_token_ignore_expiry(token: str) -> dict:
+    """Decodes JWT without validating expiry — used only for token refresh.
+    Still validates signature and token type."""
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.secret_key, 
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False}
+        )
+        if payload.get("type") != "access":
+            raise UnauthorizedError("Invalid token type")
+        return payload
+    except JWTError:
+        raise UnauthorizedError("Could not validate credentials")

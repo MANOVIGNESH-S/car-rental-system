@@ -26,7 +26,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         secure=settings.app_env == "production",
-        samesite="strict",
+        samesite="lax",
         path="/auth/refresh",
         max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
     )
@@ -57,10 +57,9 @@ async def refresh(
     response: Response,
     conn: Annotated[Connection, Depends(get_db_connection)],
     refresh_token: Annotated[str, Cookie()],
-    current_user: Annotated[any, Depends(get_current_user)],
 ) -> RefreshResponse:
-    user_id: UUID = current_user["user_id"]
-    refresh_data, new_raw_token = await auth_service.refresh(conn, refresh_token, user_id)
+    # No Bearer token needed — the HttpOnly cookie is the sole credential here.
+    refresh_data, new_raw_token = await auth_service.refresh(conn, refresh_token)
     _set_refresh_cookie(response, new_raw_token)
     return refresh_data
 

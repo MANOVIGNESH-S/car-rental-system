@@ -133,7 +133,7 @@ class WebhookService:
     @staticmethod
     async def process_vehicle_doc_result(
         conn: asyncpg.Connection,
-        data, VehicleDocResultWebhookRequest
+        data: VehicleDocResultWebhookRequest
     ) -> None:
         from src.data.repositories.vehicle_repository import VehicleRepository
 

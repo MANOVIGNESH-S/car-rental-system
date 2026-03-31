@@ -1,5 +1,3 @@
-// src/pages/dashboard/UsersPage.tsx
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Eye, Loader2 } from 'lucide-react';
@@ -44,6 +42,7 @@ export default function UsersPage() {
     suspend,
     changeRole,
   } = useUsers();
+  
   usePageTitle('User Management');
 
   const [roleUpdating, setRoleUpdating] = useState<Record<string, boolean>>({});
@@ -51,20 +50,20 @@ export default function UsersPage() {
   const [suspendUpdating, setSuspendUpdating] = useState<Record<string, boolean>>({});
   const [suspendError, setSuspendError] = useState<Record<string, string | null>>({});
 
-    const handleRoleChange = async (userId: string, newRole: string) => {
-        setRoleUpdating((prev) => ({ ...prev, [userId]: true }));
-        try {
-        await changeRole(userId, newRole as UserRole);
-        setRoleSuccess((prev) => ({ ...prev, [userId]: true }));
-        setTimeout(() => {
-            setRoleSuccess((prev) => ({ ...prev, [userId]: false }));
-        }, 1500);
-        } catch {
-        // Error handled silently for inline role select; could add toast here in future
-        } finally {
-        setRoleUpdating((prev) => ({ ...prev, [userId]: false }));
-        }
-    };
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setRoleUpdating((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await changeRole(userId, newRole as UserRole);
+      setRoleSuccess((prev) => ({ ...prev, [userId]: true }));
+      setTimeout(() => {
+        setRoleSuccess((prev) => ({ ...prev, [userId]: false }));
+      }, 1500);
+    } catch {
+      // Error handled silently for inline role select
+    } finally {
+      setRoleUpdating((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
 
   const handleSuspendToggle = async (user: AdminUserListItem) => {
     setSuspendUpdating((prev) => ({ ...prev, [user.user_id]: true }));
@@ -93,7 +92,6 @@ export default function UsersPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* 1. PAGE HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="w-6 h-6 text-gray-900" />
@@ -104,7 +102,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 2. FILTER BAR */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm flex flex-wrap gap-4 items-end">
         <div className="space-y-1">
           <label className="text-xs text-gray-500 font-medium">Role</label>
@@ -171,11 +168,9 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* 3. USERS TABLE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
@@ -306,7 +301,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 4. PAGINATION */}
       {total > 20 && (
         <div className="flex items-center justify-between bg-white px-4 py-3 border border-gray-200 rounded-xl shadow-sm sm:px-6">
           <button
