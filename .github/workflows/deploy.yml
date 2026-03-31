@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - development
+      - deploy
 
 jobs:
   deploy:
@@ -42,11 +42,13 @@ jobs:
 
             # pull latest
             git fetch origin
-            git checkout development
-            git pull origin development
+            git checkout deploy
+            git pull origin deploy
 
-            # write env
-            echo "${{ secrets.ENV_FILE }}" > backend/.env
+            # write env securely
+            cat << 'EOF' > backend/.env
+            ${{ secrets.ENV_FILE }}
+            EOF
 
             # restart containers
             sudo docker compose down || true
