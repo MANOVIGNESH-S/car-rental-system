@@ -14,7 +14,7 @@ export const getToken = (): string | null => {
 
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
 });
 
@@ -96,7 +96,7 @@ api.interceptors.response.use(
     try {
      
       const { data } = await axios.post<{ access_token: string }>(
-        'http://localhost:8000/auth/refresh',
+        `${import.meta.env.VITE_API_URL}/auth/refresh`,
         null,
         { withCredentials: true },
       );

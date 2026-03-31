@@ -37,7 +37,7 @@ def run_kyc_verification(self, job_id: str, user_id: str) -> dict:
             
         # 3. POST to webhook
         response = httpx.post(
-            "http://localhost:8000/internal/webhooks/kyc-result",
+            f"{settings.internal_webhook_base_url}/internal/webhooks/kyc-result",
             json=payload,
             headers={"X-Internal-Secret": settings.internal_secret},
             timeout=30.0,

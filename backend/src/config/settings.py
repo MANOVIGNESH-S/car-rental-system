@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str
 
-    internal_webhook_base_url: str = "http://127.0.0.1:8000"
+    internal_webhook_base_url: str
 
 
     model_config = SettingsConfigDict(

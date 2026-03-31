@@ -31,7 +31,9 @@ jobs:
 
       - name: Build and push Frontend Image
         run: |
-          docker build -t ghcr.io/manovignesh-s/car-rental-system/frontend:latest ./frontend
+          docker build \
+            --build-arg VITE_API_URL=http://${{ secrets.EC2_HOST }}:8000 \
+            -t ghcr.io/manovignesh-s/car-rental-system/frontend:latest ./frontend
           docker push ghcr.io/manovignesh-s/car-rental-system/frontend:latest
 
   deploy-to-ec2:

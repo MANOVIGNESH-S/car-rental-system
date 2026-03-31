@@ -39,7 +39,11 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const showToast = useCallback(({ duration = 4000, ...rest }: Omit<Toast, 'id'>) => {
-    const id = crypto.randomUUID();
+
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
     const newToast: Toast = { id, duration, ...rest };
 
     setToasts((prev) => {

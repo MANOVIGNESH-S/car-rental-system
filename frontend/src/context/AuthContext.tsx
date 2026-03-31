@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!token) {
         try {
           const { data } = await axios.post<{ access_token: string }>(
-            'http://localhost:8000/auth/refresh',
+            `${import.meta.env.VITE_API_URL}/auth/refresh`,
             null,
             { withCredentials: true },
           );

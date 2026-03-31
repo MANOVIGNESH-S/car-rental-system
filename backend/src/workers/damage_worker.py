@@ -35,7 +35,7 @@ def run_damage_assessment(self, job_id: str, booking_id: str) -> dict:
             
         # 3. POST to webhook
         response = httpx.post(
-            "http://localhost:8000/internal/webhooks/damage-result",
+            f"{settings.internal_webhook_base_url}/internal/webhooks/damage-result",
             json=payload,
             headers={"X-Internal-Secret": settings.internal_secret},
             timeout=60.0, # 60 seconds because Vision LLM takes longer
