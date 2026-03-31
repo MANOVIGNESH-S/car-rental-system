@@ -27,7 +27,7 @@ services:
 
   celery_worker:
     build: ./backend
-    volumes:                  # <--- ADD THIS
+    volumes:                  # <--- 
       - ./backend:/app        # <--- ADD THIS
     command: uv run celery -A src.workers.celery_app worker --loglevel=info --pool=solo
     env_file:
