@@ -23,11 +23,14 @@ jobs:
 
             echo " Starting deployment..."
 
-            # install docker if not exists
+            # install docker and git if not exists
             if ! command -v docker &> /dev/null
             then
-              sudo apt update -y
-              sudo apt install -y docker.io docker-compose-plugin git
+              echo "Docker not found. Installing via official script..."
+              sudo apt-get update -y
+              sudo apt-get install -y git curl
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
               sudo systemctl start docker
               sudo systemctl enable docker
             fi
