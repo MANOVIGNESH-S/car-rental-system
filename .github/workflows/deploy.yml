@@ -23,7 +23,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Docker tags MUST be entirely lowercase.
       - name: Build and push Backend Image
         run: |
           docker build -t ghcr.io/manovignesh-s/car-rental-system/backend:latest ./backend
