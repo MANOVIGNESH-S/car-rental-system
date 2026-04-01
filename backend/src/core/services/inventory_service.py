@@ -31,6 +31,19 @@ class InventoryService:
 
     # ── Presign helper ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def _is_valid_s3_url(url: str | None) -> bool:
+        """
+        Returns True only for full S3 URLs that contain a real object key.
+        Bare paths like 'docs/insurance.pdf' (stored by old upload code that
+        did not include the vehicle UUID prefix) are NOT valid — presigning
+        them produces a NoSuchKey error because the key does not exist in the
+        bucket under that bare path.
+        """
+        if not url:
+            return False
+        return ".amazonaws.com/" in url
+
     def _presign_vehicle(self, v: dict, include_docs: bool = False) -> dict:
         """
         Replace every raw S3 URL in a vehicle dict with a presigned URL.
@@ -39,19 +52,36 @@ class InventoryService:
 
         include_docs=True for admin responses that expose insurance/rc/puc URLs.
         Image URLs (thumbnail_urls) are always presigned.
+
+        FIX: Doc URLs are now validated before presigning. Old records that
+        stored a bare path (e.g. 'docs/insurance.pdf') instead of a full S3
+        URL will have their doc field set to None rather than producing a
+        presigned URL that resolves to a NoSuchKey S3 XML error page.
         """
         v = dict(v)
 
         # Presign all vehicle photo thumbnails (shown to customers)
         if v.get("thumbnail_urls"):
-            v["thumbnail_urls"] = [s3_client.presign(u) for u in v["thumbnail_urls"]]
+            v["thumbnail_urls"] = [
+                s3_client.presign(u) for u in v["thumbnail_urls"]
+                if self._is_valid_s3_url(u)
+            ]
 
         # Presign document URLs only for admin-facing responses
         if include_docs:
             for field in ("insurance_url", "rc_url", "puc_url"):
-                if v.get(field):
-                    # Shorter window for sensitive documents
-                    v[field] = s3_client.presign(v[field], expires_in=900)
+                raw = v.get(field)
+                if self._is_valid_s3_url(raw):
+                    v[field] = s3_client.presign(raw, expires_in=900)
+                else:
+                    # Malformed / bare-path URL — surface as None so the UI
+                    # shows "No file" instead of opening an S3 XML error page.
+                    if raw:
+                        logger.warning(
+                            f"Skipping presign for '{field}': not a full S3 URL: {raw!r}. "
+                            f"Re-upload the document for this vehicle to fix it."
+                        )
+                    v[field] = None
 
         return v
 
@@ -89,6 +119,19 @@ class InventoryService:
         return VehicleDetailResponse(
             **vehicle,
             thumbnail_url=vehicle["thumbnail_urls"][0] if vehicle["thumbnail_urls"] else "",
+        )
+
+    async def get_admin_vehicle_detail(
+        self, conn: Connection, vehicle_id: UUID
+    ) -> VehicleAdminResponse:
+        """Admin endpoint — includes presigned doc URLs (insurance/rc/puc)."""
+        vehicle = await self.vehicle_repo.get_by_id(conn, vehicle_id)
+        if not vehicle:
+            raise NotFoundError("Vehicle")
+        presigned = self._presign_vehicle(vehicle, include_docs=True)
+        return VehicleAdminResponse(
+            **presigned,
+            thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
         )
 
     # ── Admin endpoints ──────────────────────────────────────────────────────
@@ -160,7 +203,7 @@ class InventoryService:
             "daily_rate": daily_rate,
             "security_deposit": security_deposit,
             "fuel_level_pct": fuel_level_pct,
-            "thumbnail_urls": thumbnail_urls,     # plain URLs stored in DB
+            "thumbnail_urls": thumbnail_urls,
             "insurance_url": insurance_url,
             "rc_url": rc_url,
             "puc_url": puc_url,
@@ -184,7 +227,6 @@ class InventoryService:
 
         logger.info(f"Vehicle {vehicle_id} created. Doc extraction job: {job['job_id']}")
 
-        # Presign for the admin response (images + docs)
         presigned = self._presign_vehicle(new_vehicle, include_docs=True)
         return VehicleAdminResponse(
             **presigned,
@@ -236,7 +278,6 @@ class InventoryService:
         await self.vehicle_repo.delete(conn, vehicle_id)
 
     async def get_expiring_docs(self, conn: Connection, days: int) -> list[ExpiringDocItem]:
-        # Expiry doc list — no image URLs in this response, no presigning needed
         vehicles = await self.vehicle_repo.get_expiring_docs(conn, days)
         today = date.today()
         results = []

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Fuel, Info, CalendarDays, ShieldCheck } from 'lucide-react';
 import { useVehicleDetail } from '../../features/inventory/hooks/useVehicleDetail';
 import { useAuth } from '../../context/AuthContext';
+import { useKYC } from '../../features/kyc/hooks/useKYC';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
@@ -15,9 +16,14 @@ const VehicleDetailPage = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { kycStatus } = useKYC();
   const { vehicle, isLoading, error } = useVehicleDetail(vehicleId || '');
   usePageTitle(vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Vehicle');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const dlExpired = kycStatus?.dl_expiry_date
+    ? new Date(kycStatus.dl_expiry_date) < new Date()
+    : false;
 
   if (isLoading) return <Spinner />;
   
@@ -151,17 +157,21 @@ const VehicleDetailPage = () => {
                 >
                   Sign In to Book
                 </button>
-              ) : user?.kyc_status !== 'verified' ? (
+              ) : user?.kyc_status !== 'verified' || dlExpired ? (
                 <div className="space-y-3">
                   <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-3">
                     <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
-                    <p className="text-xs text-amber-800 font-medium">Complete KYC verification to book this vehicle.</p>
+                    <p className="text-xs text-amber-800 font-medium">
+                      {user?.kyc_status === 'verified' && dlExpired
+                        ? 'Your driving license has expired. Please upload a renewed license to book.'
+                        : 'Complete KYC verification to book this vehicle.'}
+                    </p>
                   </div>
                   <button 
                     onClick={() => navigate('/portal/kyc')}
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
-                    Verify KYC
+                    {user?.kyc_status === 'verified' && dlExpired ? 'Renew License' : 'Verify KYC'}
                   </button>
                 </div>
               ) : (

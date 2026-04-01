@@ -5,6 +5,7 @@ from src.core.exceptions.base import NotFoundError, ForbiddenError
 from src.schemas.admin import (
     AdminUserListItem,
     AdminUserListResponse,
+    AdminUserDetail,
     SuspendUserResponse,
     UpdateRoleResponse
 )
@@ -77,3 +78,41 @@ class AdminService:
         logger.info(f"User {target_user_id} role changed to {new_role} by {requesting_admin_id}")
         
         return UpdateRoleResponse(**updated)
+
+    @staticmethod
+    async def get_user_detail(
+        conn: Any,
+        user_id: UUID,
+    ) -> AdminUserDetail:
+        """Return a single user with presigned KYC document URLs."""
+        from src.data.clients.s3_client import s3_client
+
+        user = await UserRepository.get_by_id(conn, user_id)
+        if not user:
+            raise NotFoundError("User")
+
+        user = dict(user)
+
+        # Presign selfie and license URLs if present
+        selfie_url = None
+        license_url = None
+        if user.get("selfie_url"):
+            try:
+                selfie_url = s3_client.presign(user["selfie_url"], expires_in=900)
+            except Exception:
+                pass
+        if user.get("license_url"):
+            try:
+                license_url = s3_client.presign(user["license_url"], expires_in=900)
+            except Exception:
+                pass
+
+        # Exclude raw DB URL columns AND password_hash from the spread.
+        # license_url is a real column in the users table — without excluding it
+        # here, it arrives BOTH via **user spread AND as an explicit kwarg → TypeError.
+        _exclude = {"selfie_url", "license_url", "dl_front_url", "dl_back_url", "password_hash"}
+        return AdminUserDetail(
+            **{k: v for k, v in user.items() if k not in _exclude},
+            selfie_url=selfie_url,
+            license_url=license_url,
+        )

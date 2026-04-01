@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { uploadKYCDocuments, getKYCStatus,type KYCStatusResponse } from '../services/kycService';
+import { uploadKYCDocuments, getKYCStatus, type KYCStatusResponse } from '../services/kycService';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 
@@ -31,16 +31,21 @@ export const useKYC = () => {
     }
   }, [fetchStatus, user]);
 
-  const upload = async (licenseImage: File, selfieImage: File) => {
+  /**
+   * Uploads KYC docs. Returns true on success so the page can navigate away.
+   */
+  const upload = async (licenseImage: File, selfieImage: File): Promise<boolean> => {
     setIsUploading(true);
     try {
       await uploadKYCDocuments(licenseImage, selfieImage);
       toast.success('Documents uploaded', 'Verification in progress.');
       await fetchStatus();
+      return true;
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
       const errorMessage = e.response?.data?.detail || 'An unexpected error occurred';
       toast.error('Upload failed', errorMessage);
+      return false;
     } finally {
       setIsUploading(false);
     }

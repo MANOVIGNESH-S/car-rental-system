@@ -19,6 +19,7 @@ class AsyncJobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_stuck: bool = False
+    reference_name: str | None = None  # Human-readable name of the reference entity
 
     model_config = ConfigDict(from_attributes=True)
 

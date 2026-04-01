@@ -1,13 +1,14 @@
-// src/pages/dashboard/KycReviewPage.tsx
-
 import React, { useState } from 'react';
 import { 
   ShieldCheck, 
   CheckCircle2, 
   XCircle, 
-  Loader2 
+  Loader2,
+  FileImage,
+  X as CloseIcon,
 } from 'lucide-react';
 import { useKycReview } from '../../features/kyc/hooks/useKycReview';
+import { getKycDocumentUrls, type KycDocumentUrls } from '../../features/kyc/services/adminKycService';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Badge } from '../../components/ui/Badge';
 import { formatDateTime } from '../../utils/vehicleHelpers';
@@ -26,6 +27,11 @@ export default function KycReviewPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [decision, setDecision] = useState<'verified' | 'failed' | null>(null);
   const [reason, setReason] = useState<string>('');
+
+  // Document viewer state
+  const [docsUserId, setDocsUserId] = useState<string | null>(null);
+  const [docs, setDocs] = useState<KycDocumentUrls | null>(null);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
   const handleInitiateReview = (userId: string, action: 'verified' | 'failed') => {
     setActiveId(userId);
@@ -54,8 +60,52 @@ export default function KycReviewPage() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const handleViewDocs = async (userId: string) => {
+    setDocsUserId(userId);
+    setDocs(null);
+    setIsLoadingDocs(true);
+    try {
+      const data = await getKycDocumentUrls(userId);
+      setDocs(data);
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  };
+
+  const closeDocs = () => { setDocsUserId(null); setDocs(null); };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      {/* Document Viewer Modal */}
+      {docsUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeDocs}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-semibold text-gray-900">KYC Documents</h3>
+              <button onClick={closeDocs} className="text-gray-400 hover:text-gray-600"><CloseIcon className="w-5 h-5" /></button>
+            </div>
+            {isLoadingDocs ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: 'Driving License', url: docs?.license_url },
+                  { label: 'Selfie', url: docs?.selfie_url },
+                ].map(({ label, url }) => (
+                  <div key={label}>
+                    <p className="text-xs font-medium text-gray-500 mb-2">{label}</p>
+                    {url
+                      ? <img src={url} alt={label} className="w-full rounded-xl border border-gray-200 object-cover max-h-64" />
+                      : <div className="w-full h-40 rounded-xl border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">Not uploaded</div>
+                    }
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* 1. HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -112,6 +162,21 @@ export default function KycReviewPage() {
                         <span className="text-gray-300">•</span>
                         <span className="text-xs text-gray-500">Joined: {formatDateTime(user.created_at)}</span>
                       </div>
+                      {/* KYC document context — helps admin decide without opening the docs */}
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                        <span>
+                          <span className="font-medium text-gray-500">DL Expiry: </span>
+                          {user.dl_expiry_date
+                            ? (new Date(user.dl_expiry_date) < new Date()
+                              ? <span className="text-red-600 font-semibold">{user.dl_expiry_date} ⚠ Expired</span>
+                              : <span className="text-gray-900">{user.dl_expiry_date}</span>)
+                            : <span className="text-gray-400">Not extracted</span>}
+                        </span>
+                        <span>
+                          <span className="font-medium text-gray-500">Address: </span>
+                          <span className="text-gray-900">{user.extracted_address || <span className="text-gray-400">Not extracted</span>}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -121,6 +186,13 @@ export default function KycReviewPage() {
                     
                     {!isCardActive && (
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewDocs(userId)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
+                        >
+                          <FileImage className="w-4 h-4" />
+                          View Docs
+                        </button>
                         <button
                           onClick={() => handleInitiateReview(userId, 'verified')}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors"

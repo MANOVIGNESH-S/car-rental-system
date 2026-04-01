@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getInventory, type InventoryFilters } from '../services/inventoryService';
 import type { VehicleListItem } from '../../../types';
-import { isAxiosError } from 'axios'; // <-- Add this import
+import { isAxiosError } from 'axios';
+
 /**
  * Hook to manage inventory data fetching and filtering.
  * Syncs vehicle list with provided filters and handles loading/error states.
@@ -12,14 +13,14 @@ export const useInventory = () => {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFiltersState] = useState<InventoryFilters>({});
 
-const fetchVehicles = useCallback(async () => {
+  const fetchVehicles = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await getInventory(filters);
       setVehicles(data);
-    } catch (err) { // <-- Remove : any
-      if (isAxiosError(err)) { // <-- Safely check if it's an Axios error
+    } catch (err) {
+      if (isAxiosError(err)) {
         setError(err.response?.data?.message || 'Failed to load inventory.');
       } else if (err instanceof Error) {
         setError(err.message);
@@ -31,19 +32,26 @@ const fetchVehicles = useCallback(async () => {
     }
   }, [filters]);
 
-  // Fetch on mount and whenever filters change
   useEffect(() => {
     fetchVehicles();
   }, [fetchVehicles]);
 
   /**
-   * Updates filter state by merging new filters with existing ones.
+   * Replaces the entire filter state.
+   * Strips empty strings/undefined so axios never sends blank query params (e.g. vehicle_type=).
    */
-  const setFilters = (newFilters: Partial<InventoryFilters>) => {
-    setFiltersState((prev) => ({
-      ...prev,
-      ...newFilters,
-    }));
+  const setFilters = (newFilters: InventoryFilters) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(newFilters).filter(([, v]) => v !== undefined && v !== '')
+    ) as InventoryFilters;
+    setFiltersState(cleaned);
+  };
+
+  /**
+   * Resets all filters — triggers a fresh unfiltered fetch.
+   */
+  const clearFilters = () => {
+    setFiltersState({});
   };
 
   /**
@@ -59,6 +67,7 @@ const fetchVehicles = useCallback(async () => {
     error,
     filters,
     setFilters,
+    clearFilters,
     refetch,
   };
 };

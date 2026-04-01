@@ -1,5 +1,3 @@
-// src/features/admin/services/adminService.ts
-
 import apiClient from '../../../lib/axios';
 import type {
   AdminUserListItem,
@@ -105,7 +103,7 @@ export const retryJob = async (
 export const getPaymentLedger = async (
   bookingId: string
 ): Promise<PaymentLedger> => {
-  const response = await apiClient.get<PaymentLedger>(`/bookings/${bookingId}/payments`);
+  const response = await apiClient.get<PaymentLedger>(`/admin/payments/${bookingId}`);
   return response.data;
 };
 
@@ -113,5 +111,14 @@ export const processManualRefund = async (
   data: ManualRefundRequest
 ): Promise<PaymentRecord> => {
   const response = await apiClient.post<PaymentRecord>('/admin/payments/refund', data);
+  return response.data;
+};
+export interface AdminUserDetail extends AdminUserListItem {
+  selfie_url: string | null;
+  license_url: string | null;
+}
+
+export const getUserById = async (userId: string): Promise<AdminUserDetail> => {
+  const response = await apiClient.get<AdminUserDetail>(`/admin/users/${userId}`);
   return response.data;
 };

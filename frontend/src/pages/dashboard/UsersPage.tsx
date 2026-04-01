@@ -219,18 +219,25 @@ export default function UsersPage() {
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <select
-                          className="px-2 py-1 text-xs text-gray-700 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                          value={user.role}
-                          disabled={roleUpdating[user.user_id]}
-                          onChange={(e) => handleRoleChange(user.user_id, e.target.value)}
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="manager">Manager</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        {roleUpdating[user.user_id] && (
-                          <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                        {user.role === 'Admin' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                            Admin
+                          </span>
+                        ) : (
+                          <>
+                            <select
+                              className="px-2 py-1 text-xs text-gray-700 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              value={user.role}
+                              disabled={roleUpdating[user.user_id]}
+                              onChange={(e) => handleRoleChange(user.user_id, e.target.value)}
+                            >
+                              <option value="Customer">Customer</option>
+                              <option value="Manager">Manager</option>
+                            </select>
+                            {roleUpdating[user.user_id] && (
+                              <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -256,24 +263,28 @@ export default function UsersPage() {
                             Active
                           </span>
                         )}
-                        {suspendUpdating[user.user_id] ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-2" />
-                        ) : (
-                          <button
-                            onClick={() => handleSuspendToggle(user)}
-                            className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
-                              user.is_suspended
-                                ? 'border-green-600 text-green-600 hover:bg-green-50'
-                                : 'border-red-600 text-red-600 hover:bg-red-50'
-                            }`}
-                          >
-                            {user.is_suspended ? 'Unsuspend' : 'Suspend'}
-                          </button>
-                        )}
-                        {suspendError[user.user_id] && (
-                          <span className="text-[10px] text-red-600 mt-0.5">
-                            {suspendError[user.user_id]}
-                          </span>
+                        {user.role !== 'Admin' && (
+                          <>
+                            {suspendUpdating[user.user_id] ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-2" />
+                            ) : (
+                              <button
+                                onClick={() => handleSuspendToggle(user)}
+                                className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
+                                  user.is_suspended
+                                    ? 'border-green-600 text-green-600 hover:bg-green-50'
+                                    : 'border-red-600 text-red-600 hover:bg-red-50'
+                                }`}
+                              >
+                                {user.is_suspended ? 'Unsuspend' : 'Suspend'}
+                              </button>
+                            )}
+                            {suspendError[user.user_id] && (
+                              <span className="text-[10px] text-red-600 mt-0.5">
+                                {suspendError[user.user_id]}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

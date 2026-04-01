@@ -143,18 +143,31 @@ class JobRepository:
         """
         total_count = await conn.fetchval(count_query, job_type, status)
 
-        # 2. Get Paginated Data
+        # 2. Get Paginated Data (with human-readable reference_name via LEFT JOINs)
         select_query = """
-            SELECT *,
-                CASE 
-                    WHEN status = 'processing' 
-                    AND updated_at < NOW() - interval '10 minutes' 
-                    THEN true ELSE false 
-                END AS is_stuck
-            FROM async_jobs
-            WHERE ($1::text IS NULL OR job_type = $1)
-            AND ($2::text IS NULL OR status = $2)
-            ORDER BY updated_at DESC
+            SELECT j.*,
+                CASE
+                    WHEN j.status = 'processing'
+                    AND j.updated_at < NOW() - interval '10 minutes'
+                    THEN true ELSE false
+                END AS is_stuck,
+                CASE
+                    WHEN j.reference_type = 'user' THEN u.full_name
+                    WHEN j.reference_type = 'booking' THEN CONCAT('Booking – ', bu.full_name)
+                    WHEN j.reference_type = 'vehicle' THEN CONCAT(v.brand, ' ', v.model)
+                    ELSE NULL
+                END AS reference_name
+            FROM async_jobs j
+            LEFT JOIN users u
+                ON j.reference_type = 'user' AND j.reference_id = u.user_id
+            LEFT JOIN bookings b
+                ON j.reference_type = 'booking' AND j.reference_id = b.booking_id
+            LEFT JOIN users bu ON b.user_id = bu.user_id
+            LEFT JOIN vehicles v
+                ON j.reference_type = 'vehicle' AND j.reference_id = v.vehicle_id
+            WHERE ($1::text IS NULL OR j.job_type = $1)
+            AND ($2::text IS NULL OR j.status = $2)
+            ORDER BY j.updated_at DESC
             LIMIT $3 OFFSET $4
         """
         rows = await conn.fetch(select_query, job_type, status, limit, offset)

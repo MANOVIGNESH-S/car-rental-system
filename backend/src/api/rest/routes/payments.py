@@ -32,6 +32,25 @@ async def get_booking_ledger(
         user_id=current_user["user_id"]
     )
 
+@admin_router.get(
+    "/admin/payments/{booking_id}",
+    response_model=PaymentLedgerResponse,
+    status_code=status.HTTP_200_OK
+)
+async def get_booking_ledger_admin(
+    booking_id: UUID,
+    current_user: Annotated[dict, Depends(require_role(UserRole.manager, UserRole.admin))],
+    conn: Annotated[any, Depends(get_db_connection)]
+) -> PaymentLedgerResponse:
+    """
+    Retrieves the full payment history for a booking.
+    Access restricted to Admin and Manager roles (no ownership check).
+    """
+    return await PaymentService.get_booking_payments_admin(
+        conn=conn,
+        booking_id=booking_id,
+    )
+
 @admin_router.post(
     "/admin/payments/refund",
     response_model=PaymentRecordResponse,

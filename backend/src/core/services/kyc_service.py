@@ -71,7 +71,15 @@ class KYCService:
             raise NotFoundError(f"User {user_id} not found")
         
         if current_data["kyc_status"] == KYCStatus.verified:
-            raise ConflictError("KYC already verified")
+            # Allow re-upload only if the driving license has expired
+            dl_expiry = current_data.get("dl_expiry_date")
+            license_expired = False
+            if dl_expiry:
+                from datetime import date
+                expiry_date = dl_expiry if isinstance(dl_expiry, date) else date.fromisoformat(str(dl_expiry))
+                license_expired = expiry_date < date.today()
+            if not license_expired:
+                raise ConflictError("KYC already verified")
 
         await self.user_repo.update_kyc_urls(conn, user_id, license_url, selfie_url)
 
@@ -102,6 +110,18 @@ class KYCService:
             raise NotFoundError(f"User {user_id} not found")
         
         return KYCStatusResponse.model_validate(data)
+
+    async def get_document_urls(self, conn, user_id: uuid.UUID) -> dict:
+        """Return short-lived presigned URLs for the user's KYC documents."""
+        user = await self.user_repo.get_by_id(conn, user_id)
+        if not user:
+            raise NotFoundError(f"User {user_id} not found")
+        license_url = user.get("license_url")
+        selfie_url  = user.get("selfie_url")
+        return {
+            "license_url": s3_client.presign(license_url, expires_in=900) if license_url else None,
+            "selfie_url":  s3_client.presign(selfie_url,  expires_in=900) if selfie_url  else None,
+        }
 
     async def review_kyc(
         self,

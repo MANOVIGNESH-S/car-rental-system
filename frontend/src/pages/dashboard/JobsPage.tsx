@@ -183,6 +183,17 @@ export default function JobsPage() {
         )}
       </div>
 
+      {/* Info banner: email jobs are fire-and-forget async */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex gap-3">
+        <Mail className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700">
+          <span className="font-semibold">Email jobs</span> are dispatched asynchronously by Celery. 
+          A &quot;Queued&quot; email job means the email was enqueued — once Celery picks it up and sends it, 
+          the status updates to <span className="font-semibold">Completed</span>. 
+          If the worker is offline the job stays Queued until the worker restarts.
+        </p>
+      </div>
+
       {/* 4. JOBS TABLE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -237,11 +248,17 @@ export default function JobsPage() {
                         </span>
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1 items-start">
-                          <span className="font-mono text-xs text-gray-900">
-                            {job.reference_id.substring(0, 8)}
-                          </span>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-0.5 items-start">
+                          {job.reference_name ? (
+                            <span className="text-sm font-medium text-gray-900">
+                              {job.reference_name}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-xs text-gray-500">
+                              {job.reference_id.substring(0, 8)}
+                            </span>
+                          )}
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
                             {job.reference_type}
                           </span>

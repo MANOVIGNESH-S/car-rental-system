@@ -201,11 +201,30 @@ async def classify(state: KYCState) -> Dict[str, Any]:
     if not state.get("extracted_address"):
         return {"kyc_decision": "failed", "success": False}
 
+    # 🚨 Reject expired driving license — verified badge must not show for expired DL
+    dl_expiry = state.get("dl_expiry_date")
+    if dl_expiry:
+        try:
+            from datetime import date
+            expiry = date.fromisoformat(dl_expiry)
+            if expiry < date.today():
+                return {
+                    "kyc_decision": "failed",
+                    "success": False,
+                    "error": f"Driving license expired on {dl_expiry}. Please upload a renewed license.",
+                }
+        except ValueError:
+            pass  # If we can't parse the date, don't block — let the score decide
+
+    # Score thresholds (face_match_score is 0.0–1.0):
+    #   < 0.10  → failed
+    #   0.10–0.89 → needs_review
+    #   ≥ 0.90  → verified
     score = state.get("face_match_score", 0.0)
 
-    if score >= 0.8:
+    if score >= 0.90:
         return {"kyc_decision": "verified", "success": True}
-    elif score >= 0.5:
+    elif score >= 0.10:
         return {"kyc_decision": "needs_review", "success": True}
     else:
         return {"kyc_decision": "failed", "success": False}

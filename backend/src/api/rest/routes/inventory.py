@@ -58,6 +58,33 @@ async def get_vehicle_details(
 
 # ── Admin endpoints ──────────────────────────────────────────────────────────
 
+# NOTE: This MUST be defined before /admin/vehicles/{vehicle_id} so that
+# FastAPI does not try to coerce the literal string "expiring-docs" as a UUID.
+@admin_router.get(
+    "/admin/vehicles/expiring-docs",
+    response_model=list[ExpiringDocItem],
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
+)
+async def get_expiring_docs(
+    conn: Annotated[Connection, Depends(get_db_connection)],
+    days: int = Query(default=30),
+):
+    return await inventory_service.get_expiring_docs(conn, days)
+
+
+@admin_router.get(
+    "/admin/vehicles/{vehicle_id}",
+    response_model=VehicleAdminResponse,
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
+)
+async def get_admin_vehicle_detail(
+    vehicle_id: UUID,
+    conn: Annotated[Connection, Depends(get_db_connection)],
+):
+    """Return full admin vehicle details including presigned doc URLs."""
+    return await inventory_service.get_admin_vehicle_detail(conn, vehicle_id)
+
+
 @admin_router.post(
     "/admin/vehicles",
     response_model=VehicleAdminResponse,
@@ -138,15 +165,3 @@ async def delete_vehicle(
     conn: Annotated[Connection, Depends(get_db_connection)],
 ):
     await inventory_service.delete_vehicle(conn, vehicle_id)
-
-
-@admin_router.get(
-    "/admin/vehicles/expiring-docs",
-    response_model=list[ExpiringDocItem],
-    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
-)
-async def get_expiring_docs(
-    conn: Annotated[Connection, Depends(get_db_connection)],
-    days: int = Query(default=30),
-):
-    return await inventory_service.get_expiring_docs(conn, days)

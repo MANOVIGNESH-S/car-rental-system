@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil, LogOut, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Pencil, LogOut, CheckCircle2, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../../features/profile/hooks/useProfile';
 import { useAuth } from '../../context/AuthContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -7,6 +8,7 @@ import { KycStatusBanner } from '../../features/kyc/components/KycStatusBanner';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
   const { logout } = useAuth();
   const {
     profile,
@@ -80,6 +82,17 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+
+      {/* Back to Home */}
+      <div>
+        <button
+          onClick={() => navigate('/portal')}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </button>
+      </div>
       
       {/* 1. PROFILE HEADER CARD */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 sm:p-8 text-white shadow-sm flex items-center gap-5">
@@ -99,8 +112,8 @@ const ProfilePage = () => {
 
       {/* 2. KYC STATUS CARD */}
       <div className="space-y-4">
-        <KycStatusBanner kycStatus={profile.kyc_status} />
-        {profile.kyc_status === 'verified' && profile.dl_expiry_date && (
+        <KycStatusBanner kycStatus={profile.kyc_status} dlExpiryDate={profile.dl_expiry_date} />
+        {profile.kyc_status === 'verified' && profile.dl_expiry_date && new Date(profile.dl_expiry_date) >= new Date() && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
             <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
             <div>

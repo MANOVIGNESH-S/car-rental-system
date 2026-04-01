@@ -242,6 +242,21 @@ class DamageService:
 
         logger.info(f"Damage resolved: {decision} for booking {booking_id} by {resolved_by}")
 
+        try:
+            from src.workers.notification_worker import send_email_notification
+            send_email_notification.delay(
+                reference_id=str(booking_id),
+                reference_type="booking",
+                extra={
+                    "event": "damage_resolved",
+                    "resolution": decision,
+                    "damage_amount": str(damage_amount) if damage_amount else None,
+                    "refund_amount": str(refund_val),
+                },
+            )
+        except Exception as notify_err:
+            logger.warning(f"Damage resolution notification failed (non-fatal): {notify_err}")
+
         return DamageResolveResponse(
             booking_id=booking_id,
             resolution=decision,

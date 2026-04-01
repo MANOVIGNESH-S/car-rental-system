@@ -6,28 +6,35 @@ import {
   Search, 
   X, 
   ChevronDown, 
-  ChevronUp 
+  ChevronUp,
+  ArrowLeft,
 } from 'lucide-react';
 import { useInventory } from '../../features/inventory/hooks/useInventory';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { VehicleCard } from '../../features/inventory/components/VehicleCard';
 import { Spinner } from '../../components/ui/Spinner';
 
+// Vehicle types consistent with a car-rental fleet.
+// vehicle_type is a plain string on the backend (no enum) — these options
+// must match what was used when vehicles were created in the admin fleet form.
+const VEHICLE_TYPES = ['Luxury', 'SUV', 'Sedan', 'Hatchback', 'MUV', 'Sports'] as const;
+
+const EMPTY_FORM = {
+  branch_tag: '',
+  vehicle_type: '',
+  fuel_type: '',
+  transmission: '',
+  start_time: '',
+  end_time: '',
+};
+
 const VehicleListPage = () => {
   const navigate = useNavigate();
-  const { vehicles, isLoading, error, setFilters } = useInventory();
+  const { vehicles, isLoading, error, setFilters, clearFilters } = useInventory();
   usePageTitle('Browse Vehicles');
-  
-  // Local state for form fields
+
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [formValues, setFormValues] = useState({
-    branch_tag: '',
-    vehicle_type: '',
-    fuel_type: '',
-    transmission: '',
-    start_time: '',
-    end_time: '',
-  });
+  const [formValues, setFormValues] = useState(EMPTY_FORM);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -35,26 +42,17 @@ const VehicleListPage = () => {
   };
 
   const handleSearch = () => {
-    // Convert empty strings to undefined for the API service
-    const activeFilters = Object.fromEntries(
-      Object.entries(formValues).map(([key, value]) => [key, value || undefined])
-    );
-    setFilters(activeFilters);
+    // Pass the form values directly — the hook's setFilters strips empty strings internally.
+    setFilters(formValues);
     setShowMobileFilters(false);
   };
 
   const handleClear = () => {
-    const resetValues = {
-      branch_tag: '',
-      vehicle_type: '',
-      fuel_type: '',
-      transmission: '',
-      start_time: '',
-      end_time: '',
-    };
-    setFormValues(resetValues);
-    setFilters(resetValues);
+    setFormValues(EMPTY_FORM);
+    clearFilters(); // Resets hook state to {} so no query params are sent
   };
+
+  const hasActiveFilters = Object.values(formValues).some(v => v !== '');
 
   // Date Constraints
   const now = new Date();
@@ -63,10 +61,25 @@ const VehicleListPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      <button
+          onClick={() => navigate('/portal')}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mt-0.5"
+          aria-label="Back to Home"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Home
+        </button>
+
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Browse Vehicles</h1>
-        <p className="text-sm text-gray-500">Find the perfect car for your trip</p>
+      <div className="flex items-start gap-4">
+        
+
+        
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Browse Vehicles</h1>
+          <p className="text-sm text-gray-500">Find the perfect car for your trip</p>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -80,13 +93,14 @@ const VehicleListPage = () => {
             Filters
             {showMobileFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
-          {(formValues.branch_tag || formValues.vehicle_type) && (
+          {hasActiveFilters && (
             <button onClick={handleClear} className="text-xs text-blue-600 font-medium">Clear All</button>
           )}
         </div>
 
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block`}>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
+
             {/* Branch */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-500">Location</label>
@@ -109,10 +123,9 @@ const VehicleListPage = () => {
                 className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Types</option>
-                <option value="Car">Car</option>
-                <option value="SUV">SUV</option>
-                <option value="Bike">Bike</option>
-                <option value="Van">Van</option>
+                {VEHICLE_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
               </select>
             </div>
 

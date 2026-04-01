@@ -152,7 +152,8 @@ class UserRepository:
         select_query = """
             SELECT 
                 user_id, full_name, email, phone_number, 
-                role, kyc_status, is_suspended, created_at
+                role, kyc_status, is_suspended, created_at,
+                dl_expiry_date, extracted_address
             FROM users
             WHERE ($1::text IS NULL OR kyc_status = $1)
               AND ($2::text IS NULL OR role = $2)

@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date
+from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 from src.constants.enums import UserRole, KYCStatus
@@ -12,6 +13,8 @@ class AdminUserListItem(BaseModel):
     kyc_status: KYCStatus
     is_suspended: bool
     created_at: datetime
+    dl_expiry_date: Optional[date] = None      # extracted by KYC worker
+    extracted_address: Optional[str] = None    # extracted by KYC worker
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,5 +48,12 @@ class UpdateRoleResponse(BaseModel):
     user_id: UUID
     role: UserRole
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AdminUserDetail(AdminUserListItem):
+    """Extended user detail including presigned KYC document URLs."""
+    selfie_url: Optional[str] = None
+    license_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -6,6 +6,7 @@ from src.constants.enums import UserRole
 from src.api.rest.dependencies import get_current_user, require_role, get_db_connection
 from src.schemas.admin import (
     AdminUserListResponse,
+    AdminUserDetail,
     SuspendUserRequest,
     SuspendUserResponse,
     UpdateRoleRequest,
@@ -19,7 +20,7 @@ admin_router = APIRouter()
     "/admin/users",
     response_model=AdminUserListResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role(UserRole.admin))]
+    dependencies=[Depends(require_role(UserRole.admin, UserRole.manager))]
 )
 async def list_users(
     conn: Annotated[any, Depends(get_db_connection)],
@@ -37,6 +38,19 @@ async def list_users(
         page=page,
         limit=limit
     )
+
+@admin_router.get(
+    "/admin/users/{user_id}",
+    response_model=AdminUserDetail,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_role(UserRole.admin, UserRole.manager))]
+)
+async def get_user_detail(
+    user_id: UUID,
+    conn: Annotated[any, Depends(get_db_connection)],
+):
+    return await AdminService.get_user_detail(conn=conn, user_id=user_id)
+
 
 @admin_router.patch(
     "/admin/users/{user_id}/suspend",
