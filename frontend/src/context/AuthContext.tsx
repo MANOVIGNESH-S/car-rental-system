@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { type User } from '../types';
 import api, { clearTokens, getToken, saveToken } from '../lib/axios';
@@ -20,21 +21,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
+  // Listen for forced logout events dispatched by the axios interceptor.
+  // This avoids window.location.href (which causes full reload -> infinite loop).
+  useEffect(() => {
+    const handleForceLogout = () => {
+      clearTokens();
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/login');
+    };
+
+    window.addEventListener('auth:force-logout', handleForceLogout);
+    return () => window.removeEventListener('auth:force-logout', handleForceLogout);
+  }, [navigate]);
+
+  // On mount: check if we have a valid session and hydrate user state.
   useEffect(() => {
     const initializeAuth = async () => {
       const token = getToken();
-      
+
+      // FIX #3: Don't bail early when there's no AT in localStorage.
+      // The user may have refreshed the page after the AT expired but while
+      // a valid RT cookie still exists. Attempt a silent refresh first before
+      // giving up and showing the login screen.
       if (!token) {
-        setIsLoading(false);
+        try {
+          const { data } = await axios.post<{ access_token: string }>(
+            `${import.meta.env.VITE_API_URL}/auth/refresh`,
+            null,
+            { withCredentials: true },
+          );
+          saveToken(data.access_token);
+
+          const response = await api.get<User>('/users/me');
+          setUser(response.data);
+          setIsAuthenticated(true);
+        } catch {
+          // Both AT and RT are gone — correct to stay logged out.
+        } finally {
+          setIsLoading(false);
+        }
         return;
       }
 
+      // AT exists. Fetch current user. If token expired, the axios interceptor handles:
+      //   1. Catches 401 from /users/me
+      //   2. POSTs /auth/refresh via bare axios (cookie-only, no Bearer needed)
+      //   3. Saves new access token and retries /users/me
+      //   4. If refresh fails -> dispatches 'auth:force-logout' (handled above)
       try {
         const response = await api.get<User>('/users/me');
         setUser(response.data);
         setIsAuthenticated(true);
       } catch {
-        // Removed unused 'error' variable definition
         clearTokens();
         setUser(null);
         setIsAuthenticated(false);
@@ -56,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post('/auth/logout');
     } catch {
-      // Removed unused 'error' variable definition
       // Best-effort logout, ignore server errors
     } finally {
       clearTokens();

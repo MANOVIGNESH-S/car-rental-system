@@ -36,6 +36,7 @@ class JobService:
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
                     is_stuck=row.get("is_stuck", False),
+                    reference_name=row.get("reference_name"),
                 )
                 for row in rows
             ],
@@ -67,7 +68,11 @@ class JobService:
 
         elif job_type == JobType.email_notification.value:
             from src.workers.notification_worker import send_email_notification
-            send_email_notification.delay(reference_id=reference_id, reference_type=reference_type)
+            send_email_notification.delay(
+                reference_id=reference_id,
+                reference_type=reference_type,
+                job_id=str(job_id),
+            )
 
         elif job_type == JobType.vehicle_doc_extraction.value:
             from src.workers.vehicle_doc_worker import run_vehicle_doc_extraction

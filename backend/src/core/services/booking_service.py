@@ -58,7 +58,7 @@ class BookingService:
         data: CreateBookingRequest,
     ) -> CreateBookingResponse:
         user = await conn.fetchrow(
-            "SELECT kyc_status, is_suspended FROM users WHERE user_id = $1",
+            "SELECT kyc_status, is_suspended, dl_expiry_date FROM users WHERE user_id = $1",
             user_id,
         )
         if not user:
@@ -67,6 +67,13 @@ class BookingService:
             raise KYCRequiredError()
         if user["is_suspended"]:
             raise SuspendedAccountError()
+        # Reject if the driving license has expired — verified status alone is not enough
+        dl_expiry = user["dl_expiry_date"]
+        if dl_expiry is not None:
+            from datetime import date
+            expiry_date = dl_expiry if isinstance(dl_expiry, date) else date.fromisoformat(str(dl_expiry))
+            if expiry_date < date.today():
+                raise ValidationError("Your driving license has expired. Please upload a renewed license before booking.")
 
         now = datetime.now(timezone.utc)
 

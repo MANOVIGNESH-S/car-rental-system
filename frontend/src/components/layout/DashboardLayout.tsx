@@ -21,6 +21,7 @@ export const DashboardLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isAdmin = user?.role === 'Admin';
+  const isManager = user?.role === 'Manager';
 
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', end: true },
@@ -28,7 +29,7 @@ export const DashboardLayout: React.FC = () => {
     { to: '/dashboard/bookings', icon: CalendarDays, label: 'Bookings' },
     { to: '/dashboard/kyc-review', icon: ShieldCheck, label: 'KYC Review' },
     { to: '/dashboard/payments', icon: CreditCard, label: 'Payments' }, // Links to bookings for now in router
-    ...(isAdmin ? [
+    ...(isAdmin || isManager ? [
       { to: '/dashboard/users', icon: Users, label: 'Users' },
       { to: '/dashboard/jobs', icon: Activity, label: 'Jobs' }
     ] : [])

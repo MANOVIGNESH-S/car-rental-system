@@ -24,8 +24,8 @@ class AuthService:
         self.session_repo = SessionRepository()
 
     async def register(
-        self, 
-        conn: Connection, 
+        self,
+        conn: Connection,
         data: RegisterRequest
     ) -> UserResponse:
         """Handles new user creation with unique email enforcement."""
@@ -34,7 +34,7 @@ class AuthService:
             raise ConflictError("Email already registered")
 
         pwd_hash = hash_password(data.password)
-        
+
         user = await self.user_repo.create(
             conn=conn,
             full_name=data.full_name,
@@ -46,8 +46,8 @@ class AuthService:
         return UserResponse.model_validate(dict(user))
 
     async def login(
-        self, 
-        conn: Connection, 
+        self,
+        conn: Connection,
         data: LoginRequest
     ) -> tuple[LoginResponse, str]:
         """Authenticates user and initiates a secure session with token rotation."""
@@ -62,14 +62,13 @@ class AuthService:
 
         raw_refresh_token = secrets.token_hex(64)
         refresh_hash = hash_token(raw_refresh_token)
-        
-        await self.session_repo.delete_by_user_id(conn, user["user_id"])
-        
-        expires_at = (
-                datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
-            ).replace(tzinfo=None)
 
-        
+        await self.session_repo.delete_by_user_id(conn, user["user_id"])
+
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+        ).replace(tzinfo=None)
+
         await self.session_repo.create(
             conn=conn,
             user_id=user["user_id"],
@@ -81,29 +80,33 @@ class AuthService:
             access_token=access_token,
             user=UserResponse.model_validate(dict(user))
         )
-        
+
         return response, raw_refresh_token
 
     async def refresh(
-        self, 
-        conn: Connection, 
-        refresh_token_cookie: str, 
-        user_id: UUID
+        self,
+        conn: Connection,
+        refresh_token_cookie: str,
     ) -> tuple[RefreshResponse, str]:
-        """Rotates tokens using the provided refresh token cookie."""
-        session = await self.session_repo.get_by_user_id(conn, user_id)
-        
+        """Rotates tokens using the HttpOnly refresh token cookie.
+        Looks up the session by verifying the token hash — no access token needed.
+        """
+        all_sessions = await self.session_repo.get_all_by_token_prefix(conn)
+
+        session = None
+        for s in all_sessions:
+            if verify_token(refresh_token_cookie, s.refresh_token_hash):
+                session = s
+                break
+
         if not session:
-            raise UnauthorizedError("Session not found")
-            
-        if session["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-            await self.session_repo.delete_by_user_id(conn, user_id)
+            raise UnauthorizedError("Invalid or expired refresh token")
+
+        if session.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            await self.session_repo.delete_by_session_id(conn, session.session_id)
             raise UnauthorizedError("Session expired")
 
-        if not verify_token(refresh_token_cookie, session["refresh_token_hash"]):
-            await self.session_repo.delete_by_user_id(conn, user_id)
-            raise UnauthorizedError("Invalid refresh token")
-
+        user_id = session.user_id
         user = await self.user_repo.get_by_id(conn, user_id)
         if not user:
             raise UnauthorizedError("User no longer exists")
@@ -115,11 +118,12 @@ class AuthService:
         new_raw_refresh_token = secrets.token_hex(64)
         new_refresh_hash = hash_token(new_raw_refresh_token)
 
-        await self.session_repo.delete_by_user_id(conn, user_id)
-        
+        await self.session_repo.delete_by_session_id(conn, session.session_id)
+
         new_expires_at = (
-            datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)).replace(tzinfo=None)
-        
+            datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+        ).replace(tzinfo=None)
+
         await self.session_repo.create(
             conn=conn,
             user_id=user_id,

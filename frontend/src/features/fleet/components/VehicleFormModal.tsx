@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Car, Settings, DollarSign, FileText, Image as ImageIcon } from 'lucide-react';
+import { X, Loader2, Car, Settings, IndianRupee, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { useVehicleForm } from '../hooks/useVehicleForm';
 import type { VehicleAdmin, Transmission, FuelType } from '../../../types/index';
+
+// Shared constant — must match VEHICLE_TYPES in VehicleListPage.tsx
+const VEHICLE_TYPES = ['Car', 'SUV', 'Sedan', 'Hatchback', 'MUV'] as const;
 
 export interface VehicleFormModalProps {
   isOpen: boolean;
@@ -37,6 +40,11 @@ export function VehicleFormModal({
   const [rcDoc, setRcDoc] = useState<File | null>(null);
   const [pucDoc, setPucDoc] = useState<File | null>(null);
 
+  // Expiry dates — editable in both create and edit mode
+  const [insuranceExpiry, setInsuranceExpiry] = useState('');
+  const [rcExpiry, setRcExpiry] = useState('');
+  const [pucExpiry, setPucExpiry] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
@@ -47,10 +55,14 @@ export function VehicleFormModal({
           setTransmission(editVehicle.transmission);
           setFuelType(editVehicle.fuel_type);
           setBranchTag(editVehicle.branch_tag);
-          setHourlyRate(editVehicle.hourly_rate.toString());
-          setDailyRate(editVehicle.daily_rate.toString());
-          setSecurityDeposit(editVehicle.security_deposit.toString());
+          setHourlyRate(String(parseFloat(editVehicle.hourly_rate.toString())));
+          setDailyRate(String(parseFloat(editVehicle.daily_rate.toString())));
+          setSecurityDeposit(String(parseFloat(editVehicle.security_deposit.toString())));
           setFuelLevelPct(editVehicle.fuel_level_pct.toString());
+          // Expiry dates — pre-fill from existing vehicle (AI-extracted or previously saved)
+          setInsuranceExpiry(editVehicle.insurance_expiry_date ?? '');
+          setRcExpiry(editVehicle.rc_expiry_date ?? '');
+          setPucExpiry(editVehicle.puc_expiry_date ?? '');
         } else {
           setBrand('');
           setModel('');
@@ -62,6 +74,9 @@ export function VehicleFormModal({
           setDailyRate('');
           setSecurityDeposit('');
           setFuelLevelPct('100');
+          setInsuranceExpiry('');
+          setRcExpiry('');
+          setPucExpiry('');
 
           // reset files
           setVehicleImages([]);
@@ -86,6 +101,9 @@ export function VehicleFormModal({
         daily_rate: Number(dailyRate),
         security_deposit: Number(securityDeposit),
         fuel_level_pct: Number(fuelLevelPct),
+        insurance_expiry_date: insuranceExpiry || null,
+        rc_expiry_date: rcExpiry || null,
+        puc_expiry_date: pucExpiry || null,
       });
 
       if (result) {
@@ -198,14 +216,18 @@ export function VehicleFormModal({
                 </div>
                 <div className="col-span-2">
                   <label className={labelClass}>Vehicle Type</label>
-                  <input
-                    placeholder="e.g. Sedan, SUV, Hatchback"
+                  <select
                     value={vehicleType}
                     onChange={(e) => setVehicleType(e.target.value)}
                     className={inputClass}
                     disabled={isEdit}
                     required
-                  />
+                  >
+                    <option value="" disabled>Select Vehicle Type</option>
+                    {VEHICLE_TYPES.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -274,12 +296,12 @@ export function VehicleFormModal({
 
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <h3 className={sectionHeaderClass}>
-                <DollarSign className="w-4 h-4 text-blue-600" />
+                <IndianRupee className="w-4 h-4 text-blue-600" />
                 Pricing Options
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Hourly Rate ($)</label>
+                  <label className={labelClass}>Hourly Rate (₹)</label>
                   <input
                     type="number"
                     min="0"
@@ -292,7 +314,7 @@ export function VehicleFormModal({
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Daily Rate ($)</label>
+                  <label className={labelClass}>Daily Rate (₹)</label>
                   <input
                     type="number"
                     min="0"
@@ -305,7 +327,7 @@ export function VehicleFormModal({
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className={labelClass}>Security Deposit ($)</label>
+                  <label className={labelClass}>Security Deposit (₹)</label>
                   <input
                     type="number"
                     min="0"
@@ -319,6 +341,92 @@ export function VehicleFormModal({
                 </div>
               </div>
             </div>
+
+            {/* Document Viewer + Expiry Dates - Edit Mode */}
+            {isEdit && editVehicle && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <h3 className={sectionHeaderClass}>
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Documents &amp; Expiry Dates
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Expiry dates are auto-extracted by AI on upload. Correct them here if needed.
+                </p>
+
+                {/* Document cards with view buttons and editable expiry dates */}
+                <div className="space-y-3">
+                  {[
+                    {
+                      label: 'Insurance',
+                      url: editVehicle.insurance_url,
+                      current: editVehicle.insurance_expiry_date,
+                      value: insuranceExpiry,
+                      setter: setInsuranceExpiry,
+                    },
+                    {
+                      label: 'RC (Registration)',
+                      url: editVehicle.rc_url,
+                      current: editVehicle.rc_expiry_date,
+                      value: rcExpiry,
+                      setter: setRcExpiry,
+                    },
+                    {
+                      label: 'PUC Certificate',
+                      url: editVehicle.puc_url,
+                      current: editVehicle.puc_expiry_date,
+                      value: pucExpiry,
+                      setter: setPucExpiry,
+                    },
+                  ].map(({ label, url, current, value, setter }) => (
+                    <div
+                      key={label}
+                      className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                    >
+                      {/* View button */}
+                      <div className="shrink-0">
+                        {url ? (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View {label.split(' ')[0]}
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-gray-200 text-gray-400 rounded-lg whitespace-nowrap cursor-not-allowed">
+                            No file
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Doc name + current expiry */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-700">{label}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          Current expiry:{' '}
+                          <span className={`font-medium ${current ? 'text-gray-800' : 'text-amber-600'}`}>
+                            {current ? new Date(current).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not set'}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Editable date input */}
+                      <div className="shrink-0">
+                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Update expiry</label>
+                        <input
+                          type="date"
+                          value={value}
+                          onChange={(e) => setter(e.target.value)}
+                          className="px-2 py-1.5 text-xs text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Document Uploads - Only shown on Create */}
             {!isEdit && (

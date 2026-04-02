@@ -65,6 +65,19 @@ async def get_kyc_status(
 
 
 
+@kyc_admin_router.get(
+    "/kyc/{user_id}/documents",
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))]
+)
+async def get_kyc_document_urls(
+    user_id: UUID,
+    conn: DBCnn,
+    service: Service,
+) -> dict:
+    """Return 15-minute presigned S3 URLs for the user's DL and selfie."""
+    return await service.get_document_urls(conn, user_id)
+
+
 @kyc_admin_router.patch(
     "/kyc/{user_id}/review",
     response_model=KYCReviewResponse,

@@ -157,6 +157,8 @@ export interface AdminUserListItem {
   kyc_status: KYCStatus;
   is_suspended: boolean;
   created_at: string;
+  dl_expiry_date: string | null;
+  extracted_address: string | null;
 }
 
 export interface AsyncJob {
@@ -164,6 +166,7 @@ export interface AsyncJob {
   job_type: JobType;
   reference_id: string;
   reference_type: string;
+  reference_name: string | null;   // human-readable: user full name / vehicle brand+model
   status: JobStatus;
   retry_count: number;
   last_error: string | null;
@@ -196,4 +199,9 @@ export interface CreateBookingRequest {
 export interface UpdateProfileRequest {
   full_name?: string;
   phone_number?: string;
+}
+
+export interface AdminUserDetail extends AdminUserListItem {
+  selfie_url: string | null;
+  license_url: string | null;
 }

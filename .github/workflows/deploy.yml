@@ -1,0 +1,131 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - deploy
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend Image
+        run: |
+          docker build -t ghcr.io/manovignesh-s/car-rental-system/backend:latest ./backend
+          docker push ghcr.io/manovignesh-s/car-rental-system/backend:latest
+
+      - name: Build and push Frontend Image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=http://${{ secrets.EC2_HOST }}:8000 \
+            -t ghcr.io/manovignesh-s/car-rental-system/frontend:latest ./frontend
+          docker push ghcr.io/manovignesh-s/car-rental-system/frontend:latest
+
+  deploy-to-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            APP_DIR="/home/ubuntu/app"
+
+            echo " Starting remote deployment..."
+
+            # Install Docker if missing
+            if ! command -v docker &> /dev/null
+            then
+              echo "Installing Docker..."
+              sudo apt-get update -y
+              sudo apt-get install -y curl
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo systemctl start docker
+              sudo systemctl enable docker
+            fi
+
+            mkdir -p $APP_DIR/backend
+            cd $APP_DIR
+
+            # 1. Login to GHCR so EC2 can pull the private images
+            echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u manovignesh-s --password-stdin
+
+            # 2. Write the Environment File
+            cat << 'EOF' > backend/.env
+            ${{ secrets.ENV_FILE }}
+            EOF
+
+            # 3. Write a Production Docker Compose file directly on the server
+            cat << 'EOF' > docker-compose.prod.yml
+            services:
+              db:
+                image: postgres:15
+                restart: always
+                env_file: [./backend/.env]
+                volumes: [postgres_data:/var/lib/postgresql/data]
+
+              redis:
+                image: redis:7
+                restart: always
+
+              backend:
+                image: ghcr.io/manovignesh-s/car-rental-system/backend:latest
+                command: uv run sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000"
+                ports: ["8000:8000"]
+                env_file: [./backend/.env]
+                depends_on: [db, redis]
+                restart: always
+
+              celery_worker:
+                image: ghcr.io/manovignesh-s/car-rental-system/backend:latest
+                command: uv run celery -A src.workers.celery_app worker --loglevel=info --pool=solo
+                env_file: [./backend/.env]
+                depends_on: [backend, redis]
+                restart: always
+
+              celery_beat:
+                image: ghcr.io/manovignesh-s/car-rental-system/backend:latest
+                command: uv run celery -A src.workers.celery_app beat --loglevel=info
+                env_file: [./backend/.env]
+                depends_on: [backend, redis]
+                restart: always
+
+              frontend:
+                image: ghcr.io/manovignesh-s/car-rental-system/frontend:latest
+                ports: ["80:80"]
+                depends_on: [backend]
+                restart: always
+
+            volumes:
+              postgres_data:
+            EOF
+
+            # 4. Pull the lightweight images and start the system
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker compose -f docker-compose.prod.yml down || true
+            sudo docker compose -f docker-compose.prod.yml up -d
+
+            # 5. Clean up old images to keep your 8GB hard drive clear!
+            sudo docker image prune -af
+
+            echo " Deployment completed!"

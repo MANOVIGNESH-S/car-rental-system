@@ -6,6 +6,14 @@ import { useFleet } from '../../features/fleet/hooks/useFleet';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatDateTime } from '../../utils/vehicleHelpers';
 
+// ── Bug fix: backend sends { doc: "rc"|"puc"|"insurance", ... } not doc_type ──
+// Map the raw key to a human-readable label for the expiry alert banner.
+const DOC_LABELS: Record<string, string> = {
+  insurance: 'Insurance',
+  rc: 'RC',
+  puc: 'PUC',
+};
+
 export function OverviewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -112,7 +120,13 @@ export function OverviewPage() {
               {expiringDocs.slice(0, 3).map((item) => (
                 <li key={item.vehicle_id} className="text-sm text-amber-800">
                   {item.brand} {item.model} ({item.branch_tag}) —{' '}
-                  {item.expiring.map(doc => `${doc.doc_type} expires ${formatDateTime(doc.expiry_date)}`).join(', ')}
+                  {item.expiring.map(doc => {
+                    // Backend sends key "doc" (e.g. "rc", "puc", "insurance")
+                    // DOC_LABELS maps it to a human-readable label; fallback gracefully.
+                    const rawKey = (doc as { doc?: string; doc_type?: string }).doc ?? (doc as { doc_type?: string }).doc_type ?? '';
+                    const label = DOC_LABELS[rawKey] ?? rawKey;
+                    return `${label} expires ${formatDateTime(doc.expiry_date)}`;
+                  }).join(', ')}
                 </li>
               ))}
             </ul>
@@ -121,7 +135,7 @@ export function OverviewPage() {
             )}
           </div>
           <div className="flex-shrink-0 self-start">
-            <button 
+            <button
               onClick={() => navigate('/dashboard/fleet')}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-800"
             >

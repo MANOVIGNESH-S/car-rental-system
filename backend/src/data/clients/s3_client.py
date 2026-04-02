@@ -41,10 +41,22 @@ class S3Client:
             raise InternalServiceError(f"S3 Download failed: {str(e)}")
 
     def url_to_key(self, url: str) -> str:
-        """Extracts the S3 object key from a stored plain S3 URL."""
-        # URL format: https://{bucket}.s3.{region}.amazonaws.com/{key}
+        """Extracts the S3 object key from a stored URL.
+
+        Handles two cases:
+        1. Real AWS URL:  https://{bucket}.s3.{region}.amazonaws.com/{key}
+        2. Any other URL (mock/dev): extract the path component via urlparse
+           so we never pass a full URL as the S3 key (would produce a
+           double-encoded presigned URL and NoSuchKey from S3).
+        """
+        # Real AWS URL fast-path
         parts = url.split(".amazonaws.com/", 1)
-        return parts[1] if len(parts) == 2 else url
+        if len(parts) == 2:
+            return parts[1]
+        # Fallback: strip scheme + host, return bare path (e.g. docs/rc.pdf)
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        return parsed.path.lstrip("/")
 
     def download_as_base64(self, url: str) -> str | None:
         """Downloads a private S3 file and returns it as a base64 data URL."""

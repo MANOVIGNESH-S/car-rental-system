@@ -26,6 +26,15 @@ class SessionRepository:
         row = await conn.fetchrow("SELECT * FROM sessions WHERE user_id = $1", user_id)
         return Session(**dict(row)) if row else None
 
+    async def get_all_by_token_prefix(self, conn: Connection) -> list[Session]:
+        """Retrieve all sessions — used internally for validation."""
+        rows = await conn.fetch("SELECT * FROM sessions")
+        return [Session(**dict(r)) for r in rows]
+
+    async def delete_by_session_id(self, conn: Connection, session_id: UUID) -> None:
+        """Delete a specific session by its ID."""
+        await conn.execute("DELETE FROM sessions WHERE session_id = $1", session_id)
+
     async def delete_by_user_id(self, conn: Connection, user_id: UUID) -> None:
         """Invalidate all sessions for a specific user (Logout/Rotation)."""
         await conn.execute("DELETE FROM sessions WHERE user_id = $1", user_id)

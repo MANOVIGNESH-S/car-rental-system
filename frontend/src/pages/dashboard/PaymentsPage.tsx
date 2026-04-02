@@ -16,6 +16,16 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 import { formatCurrency, formatDateTime } from '../../utils/vehicleHelpers';
 import type { PaymentMethod } from '../../types';
 
+// FIX: maps every TransactionType value to a human-readable label.
+// Previously the pill showed "Unknown" when transaction_type was a valid
+// enum string because the label lookup was missing entirely.
+const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  rental_fee: 'Rental Fee',
+  security_deposit: 'Security Deposit',
+  refund: 'Refund',
+  damage_charge: 'Damage Charge',
+};
+
 const getTransactionTypePillClasses = (type: string) => {
   switch (type) {
     case 'rental_fee':
@@ -44,6 +54,17 @@ const getStatusBadgeClasses = (status: string) => {
     default:
       return 'bg-gray-100 text-gray-600 border-gray-200';
   }
+};
+
+// FIX: payment_method from DB can be 'UPI', 'cash', or 'card' (mixed case
+// depending on when the record was created). Normalise for display.
+const formatPaymentMethod = (method: string | null | undefined): string => {
+  if (!method) return '—';
+  const upper = method.toUpperCase();
+  if (upper === 'UPI') return 'UPI';
+  if (upper === 'CARD') return 'Card';
+  if (upper === 'CASH') return 'Cash';
+  return method;
 };
 
 export default function PaymentsPage() {
@@ -111,9 +132,8 @@ export default function PaymentsPage() {
 
   if (!ledger) return null;
 
-  // FIX: Ensured '=' is used instead of '-' for assignment, and wrapped in Number() for strict TS math
   const netAmount = Number(ledger.total_charged) - Number(ledger.total_refunded);
-  
+
   const isFormValid =
     amount &&
     !isNaN(Number(amount)) &&
@@ -122,9 +142,8 @@ export default function PaymentsPage() {
     reason.trim().length >= 5 &&
     !isRefunding;
 
-  // FIX: Typecast without using 'any'
-  const refundTxnId = refundResult 
-    ? (refundResult as typeof refundResult & { mock_transaction_id?: string }).mock_transaction_id 
+  const refundTxnId = refundResult
+    ? (refundResult as typeof refundResult & { mock_transaction_id?: string }).mock_transaction_id
     : undefined;
 
   return (
@@ -198,19 +217,12 @@ export default function PaymentsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {ledger.payments.map((rawPayment, index) => {
-                const payment = rawPayment as typeof rawPayment & {
-                  payment_type?: string;
-                  type?: string;
-                  created_at?: string;
-                  createdAt?: string;
-                  payment_id?: string;
-                  id?: string;
-                };
-
-                const paymentType = payment.payment_type || payment.type || 'unknown';
-                const createdAt = payment.created_at || payment.createdAt || new Date().toISOString();
-                const paymentKey = payment.payment_id || payment.id || `payment-${index}`;
+              {ledger.payments.map((payment, index) => {
+                // FIX: transaction_type is always present on PaymentRecord.
+                // Use it directly; fall back only for legacy/malformed records.
+                const txnType: string = payment.transaction_type || 'unknown';
+                const txnLabel = TRANSACTION_TYPE_LABELS[txnType] ?? txnType.replace(/_/g, ' ');
+                const paymentKey = payment.payment_id || `payment-${index}`;
 
                 return (
                   <div
@@ -219,15 +231,15 @@ export default function PaymentsPage() {
                   >
                     <div className="flex flex-col gap-1 mb-2 sm:mb-0">
                       <div className="flex items-center gap-2">
+                        {/* Transaction type pill — now always shows the correct label */}
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${getTransactionTypePillClasses(
-                            paymentType
-                          )}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${getTransactionTypePillClasses(txnType)}`}
                         >
-                          {paymentType.replace('_', ' ')}
+                          {txnLabel}
                         </span>
+                        {/* FIX: normalise payment_method casing for display */}
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 uppercase">
-                          {payment.payment_method}
+                          {formatPaymentMethod(payment.payment_method)}
                         </span>
                       </div>
                       {payment.mock_transaction_id && (
@@ -241,24 +253,20 @@ export default function PaymentsPage() {
                       <div className="flex items-center gap-3">
                         <span
                           className={`font-semibold ${
-                            paymentType === 'refund'
-                              ? 'text-green-600'
-                              : 'text-gray-900'
+                            txnType === 'refund' ? 'text-green-600' : 'text-gray-900'
                           }`}
                         >
-                          {paymentType === 'refund' ? '- ' : ''}
+                          {txnType === 'refund' ? '- ' : ''}
                           {formatCurrency(payment.amount)}
                         </span>
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${getStatusBadgeClasses(
-                            payment.status
-                          )}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${getStatusBadgeClasses(payment.status)}`}
                         >
                           {payment.status}
                         </span>
                       </div>
                       <span className="text-xs text-gray-400">
-                        {formatDateTime(createdAt)}
+                        {formatDateTime(payment.timestamp)}
                       </span>
                     </div>
                   </div>
@@ -284,9 +292,8 @@ export default function PaymentsPage() {
                 </h3>
                 <p className="text-sm text-green-700 mt-1">
                   Amount: <strong>{formatCurrency(refundResult.amount)}</strong> via{' '}
-                  <span className="uppercase">{refundResult.payment_method}</span>
+                  <span className="uppercase">{formatPaymentMethod(refundResult.payment_method)}</span>
                 </p>
-                {/* FIX: Use the safely casted value here */}
                 {refundTxnId && (
                   <p className="text-xs text-green-600 font-mono mt-1">
                     TXN ID: {refundTxnId}
@@ -324,12 +331,20 @@ export default function PaymentsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Payment Method
                 </label>
+                {/* FIX: radio values now match the PaymentMethod enum exactly —
+                    'UPI' (uppercase), 'card' (lowercase), 'cash' (lowercase).
+                    Previously all three were sent as lowercase which caused
+                    'UPI' payments to be stored as 'upi' (invalid enum value). */}
                 <div className="grid grid-cols-3 gap-3">
-                  {['UPI', 'CARD', 'CASH'].map((method) => (
+                  {[
+                    { label: 'UPI', value: 'UPI' },
+                    { label: 'Card', value: 'card' },
+                    { label: 'Cash', value: 'cash' },
+                  ].map(({ label, value }) => (
                     <label
-                      key={method}
+                      key={value}
                       className={`cursor-pointer flex items-center justify-center p-3 rounded-lg border text-sm font-medium transition-colors ${
-                        paymentMethod === method.toLowerCase()
+                        paymentMethod === value
                           ? 'bg-blue-50 border-blue-600 text-blue-700'
                           : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
@@ -337,12 +352,12 @@ export default function PaymentsPage() {
                       <input
                         type="radio"
                         name="payment_method"
-                        value={method.toLowerCase()}
-                        checked={paymentMethod === method.toLowerCase()}
+                        value={value}
+                        checked={paymentMethod === value}
                         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                         className="sr-only"
                       />
-                      {method}
+                      {label}
                     </label>
                   ))}
                 </div>

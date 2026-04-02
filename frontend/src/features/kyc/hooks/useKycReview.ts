@@ -18,20 +18,25 @@ export function useKycReview() {
     try {
       const responseData = await getUsersPendingKyc();
       
-      // FIX: Extract the actual array from the backend response object
-      // This handles standard FastAPI pagination or wrapper objects safely without TS 'any' errors
+      // The service now returns the bare array directly (response.data.users).
+      // This fallback handles any future shape change gracefully.
       if (Array.isArray(responseData)) {
         setUsers(responseData);
       } else if (responseData && typeof responseData === 'object') {
-        // Cast to check common wrapper properties
-        const wrappedData = responseData as { items?: AdminUserListItem[]; data?: AdminUserListItem[] };
-        
-        if (wrappedData.items && Array.isArray(wrappedData.items)) {
+        const wrappedData = responseData as {
+          users?: AdminUserListItem[];
+          items?: AdminUserListItem[];
+          data?: AdminUserListItem[];
+        };
+
+        if (wrappedData.users && Array.isArray(wrappedData.users)) {
+          setUsers(wrappedData.users);
+        } else if (wrappedData.items && Array.isArray(wrappedData.items)) {
           setUsers(wrappedData.items);
         } else if (wrappedData.data && Array.isArray(wrappedData.data)) {
           setUsers(wrappedData.data);
         } else {
-          setUsers([]); // Fallback to prevent crashes if structure is totally different
+          setUsers([]);
         }
       } else {
         setUsers([]);

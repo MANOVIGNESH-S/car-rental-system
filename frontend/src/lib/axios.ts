@@ -1,8 +1,4 @@
-import axios, {
-  AxiosError,
-  type  AxiosResponse,
-  type InternalAxiosRequestConfig,
-} from 'axios';
+import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 
 export const saveToken = (token: string): void => {
   localStorage.setItem('access_token', token);
@@ -16,8 +12,9 @@ export const getToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
 
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
 });
 
@@ -44,6 +41,10 @@ const processQueue = (error: unknown, token: string | null = null): void => {
   failedQueue = [];
 };
 
+const dispatchForceLogout = (): void => {
+  window.dispatchEvent(new Event('auth:force-logout'));
+};
+
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken();
@@ -66,13 +67,24 @@ api.interceptors.response.use(
 
     if (originalRequest.url?.includes('/auth/refresh')) {
       clearTokens();
-      window.location.href = '/login';
+      dispatchForceLogout();
       return Promise.reject(error);
     }
 
     if (originalRequest._retry) {
       return Promise.reject(error);
     }
+
+    // ── Bug fix: 401/422 loop after logout ───────────────────────────────
+    // If the access token is already gone (user just logged out), there is
+    // no point trying to refresh — the logout handler already cleared the
+    // cookie via POST /auth/logout. Silently reject so background intervals
+    // (fleet polling, expiry-docs, etc.) stop without triggering an infinite
+    // refresh → 422 → force-logout → navigate → repeat cycle.
+    if (!getToken() && !isRefreshing) {
+      return Promise.reject(error);
+    }
+    // ────────────────────────────────────────────────────────────────────
 
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
@@ -92,7 +104,11 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const { data } = await api.post<{ access_token: string }>('/auth/refresh');
+      const { data } = await axios.post<{ access_token: string }>(
+        `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        null,
+        { withCredentials: true },
+      );
       const newToken = data.access_token;
 
       saveToken(newToken);
@@ -107,7 +123,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError, null);
       clearTokens();
-      window.location.href = '/login';
+      dispatchForceLogout();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

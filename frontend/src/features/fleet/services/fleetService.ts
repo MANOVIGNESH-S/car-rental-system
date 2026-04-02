@@ -7,7 +7,6 @@ import type {
   VehicleAdmin 
 } from '../../../types/index';
 
-// ✅ UPDATED CreateVehiclePayload (uses files instead of URLs)
 export interface CreateVehiclePayload {
   brand: string;
   model: string;
@@ -25,13 +24,15 @@ export interface CreateVehiclePayload {
   puc_doc: File;
 }
 
-// ✅ UPDATED UpdateVehiclePayload (no file fields)
 export interface UpdateVehiclePayload {
   branch_tag?: string;
   hourly_rate?: number;
   daily_rate?: number;
   security_deposit?: number;
   fuel_level_pct?: number;
+  insurance_expiry_date?: string | null;
+  rc_expiry_date?: string | null;
+  puc_expiry_date?: string | null;
 }
 
 export interface ExpiringDocItem {
@@ -39,27 +40,29 @@ export interface ExpiringDocItem {
   brand: string;
   model: string;
   branch_tag: string;
-  expiring: Array<{ doc_type: string; expiry_date: string }>;
+  // Backend sends key "doc" (not "doc_type") — ExpiryAlertCard reads both gracefully
+  expiring: Array<{ doc: string; doc_type?: string; expiry_date: string; days_left: number }>;
 }
 
 export const getFleetVehicles = async (filters?: {
   branch_tag?: string;
   vehicle_type?: string;
-  fuel_type?: string;
-  transmission?: string;
+  status?: string;
 }): Promise<VehicleListItem[]> => {
-  const response = await apiClient.get<VehicleListItem[]>('/inventory/inventory', {
+  // Use the admin endpoint so ALL vehicles are returned (available, maintenance, retired).
+  // The public /inventory/inventory endpoint only returns available vehicles.
+  const response = await apiClient.get<VehicleListItem[]>('/admin/vehicles', {
     params: filters,
   });
   return response.data;
 };
 
 export const getFleetVehicleById = async (vehicleId: string): Promise<VehicleAdmin> => {
-  const response = await apiClient.get<VehicleAdmin>(`/inventory/inventory/${vehicleId}`);
+  // Use the admin endpoint so presigned doc URLs (insurance/rc/puc) are included
+  const response = await apiClient.get<VehicleAdmin>(`/admin/vehicles/${vehicleId}`);
   return response.data;
 };
 
-// ✅ UPDATED createVehicle (multipart/form-data)
 export const createVehicle = async (data: CreateVehiclePayload): Promise<VehicleAdmin> => {
   const formData = new FormData();
 

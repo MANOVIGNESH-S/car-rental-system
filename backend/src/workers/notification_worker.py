@@ -67,12 +67,29 @@ def _build_email_content(
         )
 
     elif reference_type == "booking":
-        # ✅ UNCHANGED — damage assessment notification
-        subject = "Car Rental System — Booking update"
-        body = (
-            f"Your booking (ID: {reference_id}) has been updated. "
-            f"Log in to check the latest status."
-        )
+        if extra and extra.get("event") == "damage_resolved":
+            resolution = extra.get("resolution", "clear")
+            damage_amount = extra.get("damage_amount")
+            refund_amount = extra.get("refund_amount", "0.00")
+            subject = "Car Rental System — Damage claim resolved"
+            if resolution == "clear":
+                body = (
+                    f"Good news! The damage claim for your booking (ID: {reference_id}) "
+                    f"has been reviewed and cleared — no damage was found. "
+                    f"Your full security deposit of \u20b9{refund_amount} will be refunded."
+                )
+            else:
+                body = (
+                    f"The damage claim for your booking (ID: {reference_id}) has been resolved. "
+                    f"A damage charge of \u20b9{damage_amount} has been applied. "
+                    f"The remaining balance of \u20b9{refund_amount} will be refunded to you."
+                )
+        else:
+            subject = "Car Rental System — Booking update"
+            body = (
+                f"Your booking (ID: {reference_id}) has been updated. "
+                f"Log in to check the latest status."
+            )
 
     elif reference_type == "vehicle" and extra:
         # FIX 3: Build a rich, actionable alert instead of the generic template.
@@ -121,6 +138,39 @@ def _build_email_content(
     return subject, body
 
 
+async def _update_email_job_status(job_id: str, status: str, error: str | None = None) -> None:
+    """Update the email notification job status in the DB after sending."""
+    if not job_id:
+        return
+    try:
+        dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        conn = await asyncpg.connect(dsn)
+        try:
+            if status == "completed":
+                await conn.execute(
+                    """
+                    UPDATE async_jobs
+                    SET status = 'completed', updated_at = NOW()
+                    WHERE job_id = $1
+                    """,
+                    job_id,
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE async_jobs
+                    SET status = 'failed', last_error = $1, updated_at = NOW()
+                    WHERE job_id = $2
+                    """,
+                    error,
+                    job_id,
+                )
+        finally:
+            await conn.close()
+    except Exception as e:
+        logger.error(f"Failed to update email job {job_id} status: {e}")
+
+
 @celery_app.task(
     name="email_notification",
     bind=True,
@@ -131,7 +181,8 @@ def send_email_notification(
     self,
     reference_id: str,
     reference_type: str,
-    extra: dict | None = None,  # FIX 3: optional context for richer email bodies
+    extra: dict | None = None,
+    job_id: str | None = None,  # DB job ID — used to mark job completed/failed
 ) -> dict:
     logger.info(f"Sending email notification for {reference_type}: {reference_id}")
 
@@ -157,6 +208,8 @@ def send_email_notification(
             logger.info(
                 f"[MOCK EMAIL] To: {recipient} | Subject: {subject} | Body: {body}"
             )
+            # Mark job completed even in mock mode
+            asyncio.run(_update_email_job_status(job_id, "completed"))
             return {"status": "mock_sent", "reference_id": reference_id, "to": recipient}
 
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
@@ -165,10 +218,12 @@ def send_email_notification(
                 server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
             logger.info(f"Email sent to {recipient} for {reference_type}: {reference_id}")
+            asyncio.run(_update_email_job_status(job_id, "completed"))
 
     except Exception as exc:
         logger.error(
             f"Email send failed for {reference_type} {reference_id} → {recipient}: {exc}"
         )
+        asyncio.run(_update_email_job_status(job_id, "failed", str(exc)))
 
     return {"status": "sent", "reference_id": reference_id, "to": recipient}

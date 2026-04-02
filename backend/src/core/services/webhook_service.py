@@ -55,7 +55,7 @@ class WebhookService:
                 kyc_verified_at,
             )
 
-            await JobRepository.create(
+            email_job = await JobRepository.create(
                 conn,
                 job_type=JobType.email_notification.value,
                 reference_id=data.user_id,
@@ -66,6 +66,7 @@ class WebhookService:
             send_email_notification.delay(
                 reference_id=str(data.user_id),
                 reference_type=ReferenceType.user.value,
+                job_id=str(email_job.get("job_id")) if email_job else None,
             )
 
             logger.info(f"KYC job {data.job_id} completed for user {data.user_id}: {data.kyc_decision.value}")
@@ -115,7 +116,7 @@ class WebhookService:
             elif data.classification == DamageClassification.red:
                 logger.warning(f"Red classification for booking {data.booking_id} — deposit held")
 
-            await JobRepository.create(
+            email_job = await JobRepository.create(
                 conn,
                 job_type=JobType.email_notification.value,
                 reference_id=data.booking_id,
@@ -126,6 +127,7 @@ class WebhookService:
             send_email_notification.delay(
                 reference_id=str(data.booking_id),
                 reference_type=ReferenceType.booking.value,
+                job_id=str(email_job.get("job_id")) if email_job else None,
             )
 
             logger.info(f"Damage job {data.job_id} completed for booking {data.booking_id}: {data.classification.value}")
@@ -133,7 +135,7 @@ class WebhookService:
     @staticmethod
     async def process_vehicle_doc_result(
         conn: asyncpg.Connection,
-        data, VehicleDocResultWebhookRequest
+        data: VehicleDocResultWebhookRequest
     ) -> None:
         from src.data.repositories.vehicle_repository import VehicleRepository
 
@@ -168,7 +170,7 @@ class WebhookService:
             # never sent a notification. KYC and damage both do — now we match
             # that pattern. reference_type="vehicle" matches the ReferenceType
             # enum and correctly routes in notification_worker.
-            await JobRepository.create(
+            email_job = await JobRepository.create(
                 conn,
                 job_type=JobType.email_notification.value,
                 reference_id=data.vehicle_id,
@@ -179,6 +181,7 @@ class WebhookService:
             send_email_notification.delay(
                 reference_id=str(data.vehicle_id),
                 reference_type=ReferenceType.vehicle.value,
+                job_id=str(email_job.get("job_id")) if email_job else None,
             )
 
             logger.info(

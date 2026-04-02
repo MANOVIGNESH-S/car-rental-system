@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from asyncpg import Connection
+from asyncpg import Connection, ForeignKeyViolationError
 from fastapi import UploadFile
 
 from src.constants.enums import JobType, ReferenceType, VehicleStatus
@@ -57,6 +57,24 @@ class InventoryService:
 
     # ── Public endpoints ─────────────────────────────────────────────────────
 
+    async def get_all_vehicles(
+        self,
+        conn: Connection,
+        branch_tag: str | None = None,
+        vehicle_type: str | None = None,
+        status: str | None = None,
+    ) -> list[VehicleListItem]:
+        """Admin fleet listing — returns all vehicles regardless of status."""
+        vehicles = await self.vehicle_repo.get_all(conn, branch_tag, vehicle_type, status)
+        result = []
+        for v in vehicles:
+            v = self._presign_vehicle(v)
+            result.append(VehicleListItem(
+                **v,
+                thumbnail_url=v["thumbnail_urls"][0] if v["thumbnail_urls"] else "",
+            ))
+        return result
+
     async def get_available_vehicles(
         self,
         conn: Connection,
@@ -89,6 +107,19 @@ class InventoryService:
         return VehicleDetailResponse(
             **vehicle,
             thumbnail_url=vehicle["thumbnail_urls"][0] if vehicle["thumbnail_urls"] else "",
+        )
+
+    async def get_admin_vehicle_detail(
+        self, conn: Connection, vehicle_id: UUID
+    ) -> VehicleAdminResponse:
+        """Admin endpoint — includes presigned doc URLs (insurance/rc/puc)."""
+        vehicle = await self.vehicle_repo.get_by_id(conn, vehicle_id)
+        if not vehicle:
+            raise NotFoundError("Vehicle")
+        presigned = self._presign_vehicle(vehicle, include_docs=True)
+        return VehicleAdminResponse(
+            **presigned,
+            thumbnail_url=presigned["thumbnail_urls"][0] if presigned["thumbnail_urls"] else "",
         )
 
     # ── Admin endpoints ──────────────────────────────────────────────────────
@@ -231,9 +262,24 @@ class InventoryService:
     async def delete_vehicle(self, conn: Connection, vehicle_id: UUID) -> None:
         if not await self.vehicle_repo.get_by_id(conn, vehicle_id):
             raise NotFoundError("Vehicle")
+        # Block on active bookings first — gives the clearest error message
         if await self.vehicle_repo.has_active_bookings(conn, vehicle_id):
-            raise ConflictError("Cannot delete: active bookings exist")
-        await self.vehicle_repo.delete(conn, vehicle_id)
+            raise ConflictError("Cannot delete: vehicle has active or reserved bookings")
+        # Block on any booking history — completed/cancelled bookings still hold a FK reference.
+        # Hard-deleting a vehicle with booking history would lose audit trail. Retire it instead.
+        if await self.vehicle_repo.has_any_bookings(conn, vehicle_id):
+            raise ConflictError(
+                "Cannot delete: vehicle has booking history. "
+                "Set its status to 'Retired' to take it out of service."
+            )
+        try:
+            await self.vehicle_repo.delete(conn, vehicle_id)
+        except ForeignKeyViolationError:
+            # Safety net: catches any FK reference not covered by the guards above
+            raise ConflictError(
+                "Cannot delete: vehicle is still referenced by other records. "
+                "Set its status to 'Retired' instead."
+            )
 
     async def get_expiring_docs(self, conn: Connection, days: int) -> list[ExpiringDocItem]:
         # Expiry doc list — no image URLs in this response, no presigning needed

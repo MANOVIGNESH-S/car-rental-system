@@ -6,7 +6,7 @@ import { useMyBookings } from '../../features/bookings/hooks/useMyBookings';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { KycStatusBanner } from '../../features/kyc/components/KycStatusBanner';
 import { Badge } from '../../components/ui/Badge';
-import { formatDateTime, getBookingStatusVariant } from '../../utils/vehicleHelpers';
+import { formatDateTime, getBookingStatusVariant, formatCurrency } from '../../utils/vehicleHelpers';
 import {type BookingListItem } from '../../types';
 
 const HomePage = () => {
@@ -24,7 +24,10 @@ const HomePage = () => {
   });
 
   const recentBookings = bookings?.slice(0, 3) || [];
-  const needsKyc = !isLoadingStatus && kycStatus?.kyc_status !== 'verified';
+  const needsKyc = !isLoadingStatus && (
+    kycStatus?.kyc_status !== 'verified' ||
+    (kycStatus?.dl_expiry_date ? new Date(kycStatus.dl_expiry_date) < new Date() : false)
+  );
 
   const quickActions = [
     { label: 'Browse Vehicles', icon: Car, path: '/portal/vehicles', indicator: false },
@@ -46,7 +49,7 @@ const HomePage = () => {
 
       {/* 2. KYC BANNER */}
       {!isLoadingStatus && kycStatus?.kyc_status && (
-        <KycStatusBanner kycStatus={kycStatus.kyc_status} />
+        <KycStatusBanner kycStatus={kycStatus.kyc_status} dlExpiryDate={kycStatus.dl_expiry_date} />
       )}
 
       {/* 3. QUICK ACTIONS GRID */}
@@ -120,7 +123,7 @@ const HomePage = () => {
                 <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
                   <span className="text-sm text-gray-500">Total Price</span>
                   <span className="text-lg font-semibold text-gray-900">
-                    ${Number(booking.total_price).toFixed(2)}
+                    {formatCurrency(Number(booking.total_price))}
                   </span>
                 </div>
               </div>

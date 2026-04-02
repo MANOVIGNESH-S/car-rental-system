@@ -64,6 +64,37 @@ class VehicleRepository:
         rows = await conn.fetch(query, *params)
         return [dict(row) for row in rows]
 
+    async def get_all(
+        self,
+        conn: Connection,
+        branch_tag: str | None = None,
+        vehicle_type: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return ALL vehicles regardless of status — used by the admin fleet page."""
+        query = "SELECT * FROM vehicles WHERE TRUE"
+        params = []
+        counter = 1
+
+        if branch_tag:
+            query += f" AND branch_tag = ${counter}"
+            params.append(branch_tag)
+            counter += 1
+
+        if vehicle_type:
+            query += f" AND vehicle_type = ${counter}"
+            params.append(vehicle_type)
+            counter += 1
+
+        if status:
+            query += f" AND vehicle_status = ${counter}"
+            params.append(status)
+            counter += 1
+
+        query += " ORDER BY created_at DESC"
+        rows = await conn.fetch(query, *params)
+        return [dict(row) for row in rows]
+
     async def get_by_id(self, conn: Connection, vehicle_id: UUID) -> dict[str, Any] | None:
         query = "SELECT * FROM vehicles WHERE vehicle_id = $1"
         row = await conn.fetchrow(query, vehicle_id)
@@ -117,14 +148,24 @@ class VehicleRepository:
         """
         return await conn.fetchval(query, vehicle_id)
 
+    async def has_any_bookings(self, conn: Connection, vehicle_id: UUID) -> bool:
+        """Returns True if any booking references this vehicle, regardless of status.
+        Used before hard-delete to prevent FK violations from completed/cancelled bookings."""
+        query = "SELECT EXISTS (SELECT 1 FROM bookings WHERE vehicle_id = $1)"
+        return await conn.fetchval(query, vehicle_id)
+
     async def get_expiring_docs(self, conn: Connection, days: int) -> list[dict[str, Any]]:
+        # Retired vehicles are already out of service — no point alerting on their docs.
         query = f"""
-            SELECT vehicle_id, brand, model, branch_tag, 
+            SELECT vehicle_id, brand, model, branch_tag,
                    insurance_expiry_date, rc_expiry_date, puc_expiry_date
             FROM vehicles
-            WHERE insurance_expiry_date <= NOW() + interval '{days} days'
-               OR rc_expiry_date <= NOW() + interval '{days} days'
-               OR puc_expiry_date <= NOW() + interval '{days} days'
+            WHERE vehicle_status != 'retired'
+              AND (
+                   insurance_expiry_date <= NOW() + interval '{days} days'
+                OR rc_expiry_date        <= NOW() + interval '{days} days'
+                OR puc_expiry_date       <= NOW() + interval '{days} days'
+              )
             ORDER BY LEAST(insurance_expiry_date, rc_expiry_date, puc_expiry_date) ASC
         """
         rows = await conn.fetch(query)

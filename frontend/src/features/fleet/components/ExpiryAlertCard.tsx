@@ -107,10 +107,11 @@ export function ExpiryAlertCard({
                   {item.expiring.map((doc, idx) => (
                     <p key={idx} className="text-xs">
                       <span className="text-gray-600 mr-1 capitalize">
-                        {doc.doc_type.replace('_', ' ')}:
+                        {/* Backend sends key "doc", not "doc_type" */}
+                        {(doc.doc ?? doc.doc_type)?.replace(/_/g, ' ') ?? 'unknown'}:
                       </span>
-                      <span className={getUrgencyColor(doc.expiry_date)}>
-                        {formatDate(doc.expiry_date)}
+                      <span className={doc.expiry_date ? getUrgencyColor(doc.expiry_date) : 'text-gray-400'}>
+                        {doc.expiry_date ? formatDate(doc.expiry_date) : '—'}
                       </span>
                     </p>
                   ))}

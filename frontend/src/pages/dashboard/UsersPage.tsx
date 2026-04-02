@@ -1,5 +1,3 @@
-// src/pages/dashboard/UsersPage.tsx
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Eye, Loader2 } from 'lucide-react';
@@ -44,6 +42,7 @@ export default function UsersPage() {
     suspend,
     changeRole,
   } = useUsers();
+  
   usePageTitle('User Management');
 
   const [roleUpdating, setRoleUpdating] = useState<Record<string, boolean>>({});
@@ -51,20 +50,20 @@ export default function UsersPage() {
   const [suspendUpdating, setSuspendUpdating] = useState<Record<string, boolean>>({});
   const [suspendError, setSuspendError] = useState<Record<string, string | null>>({});
 
-    const handleRoleChange = async (userId: string, newRole: string) => {
-        setRoleUpdating((prev) => ({ ...prev, [userId]: true }));
-        try {
-        await changeRole(userId, newRole as UserRole);
-        setRoleSuccess((prev) => ({ ...prev, [userId]: true }));
-        setTimeout(() => {
-            setRoleSuccess((prev) => ({ ...prev, [userId]: false }));
-        }, 1500);
-        } catch {
-        // Error handled silently for inline role select; could add toast here in future
-        } finally {
-        setRoleUpdating((prev) => ({ ...prev, [userId]: false }));
-        }
-    };
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setRoleUpdating((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await changeRole(userId, newRole as UserRole);
+      setRoleSuccess((prev) => ({ ...prev, [userId]: true }));
+      setTimeout(() => {
+        setRoleSuccess((prev) => ({ ...prev, [userId]: false }));
+      }, 1500);
+    } catch {
+      // Error handled silently for inline role select
+    } finally {
+      setRoleUpdating((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
 
   const handleSuspendToggle = async (user: AdminUserListItem) => {
     setSuspendUpdating((prev) => ({ ...prev, [user.user_id]: true }));
@@ -93,7 +92,6 @@ export default function UsersPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* 1. PAGE HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="w-6 h-6 text-gray-900" />
@@ -104,7 +102,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 2. FILTER BAR */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm flex flex-wrap gap-4 items-end">
         <div className="space-y-1">
           <label className="text-xs text-gray-500 font-medium">Role</label>
@@ -171,11 +168,9 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* 3. USERS TABLE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
@@ -224,18 +219,25 @@ export default function UsersPage() {
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <select
-                          className="px-2 py-1 text-xs text-gray-700 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                          value={user.role}
-                          disabled={roleUpdating[user.user_id]}
-                          onChange={(e) => handleRoleChange(user.user_id, e.target.value)}
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="manager">Manager</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        {roleUpdating[user.user_id] && (
-                          <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                        {user.role === 'Admin' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                            Admin
+                          </span>
+                        ) : (
+                          <>
+                            <select
+                              className="px-2 py-1 text-xs text-gray-700 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              value={user.role}
+                              disabled={roleUpdating[user.user_id]}
+                              onChange={(e) => handleRoleChange(user.user_id, e.target.value)}
+                            >
+                              <option value="Customer">Customer</option>
+                              <option value="Manager">Manager</option>
+                            </select>
+                            {roleUpdating[user.user_id] && (
+                              <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -261,24 +263,28 @@ export default function UsersPage() {
                             Active
                           </span>
                         )}
-                        {suspendUpdating[user.user_id] ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-2" />
-                        ) : (
-                          <button
-                            onClick={() => handleSuspendToggle(user)}
-                            className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
-                              user.is_suspended
-                                ? 'border-green-600 text-green-600 hover:bg-green-50'
-                                : 'border-red-600 text-red-600 hover:bg-red-50'
-                            }`}
-                          >
-                            {user.is_suspended ? 'Unsuspend' : 'Suspend'}
-                          </button>
-                        )}
-                        {suspendError[user.user_id] && (
-                          <span className="text-[10px] text-red-600 mt-0.5">
-                            {suspendError[user.user_id]}
-                          </span>
+                        {user.role !== 'Admin' && (
+                          <>
+                            {suspendUpdating[user.user_id] ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-2" />
+                            ) : (
+                              <button
+                                onClick={() => handleSuspendToggle(user)}
+                                className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
+                                  user.is_suspended
+                                    ? 'border-green-600 text-green-600 hover:bg-green-50'
+                                    : 'border-red-600 text-red-600 hover:bg-red-50'
+                                }`}
+                              >
+                                {user.is_suspended ? 'Unsuspend' : 'Suspend'}
+                              </button>
+                            )}
+                            {suspendError[user.user_id] && (
+                              <span className="text-[10px] text-red-600 mt-0.5">
+                                {suspendError[user.user_id]}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -306,7 +312,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 4. PAGINATION */}
       {total > 20 && (
         <div className="flex items-center justify-between bg-white px-4 py-3 border border-gray-200 rounded-xl shadow-sm sm:px-6">
           <button

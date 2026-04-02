@@ -1,5 +1,6 @@
 import secrets
 from typing import Annotated, AsyncGenerator, Callable
+from uuid import UUID
 
 from fastapi import Depends, Header, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -7,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from src.config.settings import settings
 from src.constants.enums import UserRole
 from src.core.exceptions.base import ForbiddenError, UnauthorizedError
-from src.utils.jwt import decode_access_token
+from src.utils.jwt import decode_access_token, decode_token_ignore_expiry
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -41,6 +42,21 @@ async def get_current_user(
         raise UnauthorizedError("User not found")
         
     return user
+
+
+async def get_user_id_from_expired_token(
+    token: Annotated[str, Depends(oauth2_scheme)],
+) -> UUID:
+    """
+    Extracts user_id from a JWT without checking expiry.
+    Used ONLY for the /auth/refresh endpoint — the refresh token in the
+    HttpOnly cookie is what actually proves identity, not the access token.
+    """
+    payload = decode_token_ignore_expiry(token)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise UnauthorizedError("Invalid token payload")
+    return UUID(user_id)
 
 
 def require_role(*roles: UserRole) -> Callable:

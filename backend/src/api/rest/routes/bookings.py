@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 from uuid import UUID
-from datetime import datetime
+from datetime import date as Date
 
 from src import data
 from fastapi import APIRouter, Depends, Query, status
@@ -82,7 +82,7 @@ async def get_all_bookings_admin(
     branch_tag: str | None = Query(None),
     status: str | None = Query(None),
     vehicle_id: UUID | None = Query(None),
-    date: datetime | None = Query(None),
+    date: Date | None = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100)
 ) -> list[AdminBookingListItem]:

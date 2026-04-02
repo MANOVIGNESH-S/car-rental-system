@@ -29,13 +29,14 @@ import DamagePage from '../../pages/dashboard/DamagePage';
 import KycReviewPage from '../../pages/dashboard/KycReviewPage';
 import UsersPage from '../../pages/dashboard/UsersPage';
 import JobsPage from '../../pages/dashboard/JobsPage';
+import UserDetailPage from '../../pages/dashboard/UserDetailPage';
 import PaymentsPage from '../../pages/dashboard/PaymentsPage';
 
 import NotFoundPage from '../../pages/NotFoundPage';
 
 export const AdminRoute = () => {
   const { user } = useAuth();
-  if (user?.role !== 'Admin') {
+  if (user?.role !== 'Admin' && user?.role !== 'Manager') {
     return <Navigate to="/dashboard" replace />;
   }
   return <Outlet />;
@@ -172,6 +173,10 @@ export const router = createBrowserRouter([
               {
                 path: 'users',
                 element: <UsersPage />,
+              },
+              {
+                path: 'users/:userId',
+                element: <UserDetailPage />,
               },
               {
                 path: 'jobs',
