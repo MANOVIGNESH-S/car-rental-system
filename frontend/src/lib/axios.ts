@@ -41,7 +41,6 @@ const processQueue = (error: unknown, token: string | null = null): void => {
   failedQueue = [];
 };
 
-
 const dispatchForceLogout = (): void => {
   window.dispatchEvent(new Event('auth:force-logout'));
 };
@@ -76,6 +75,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // ── Bug fix: 401/422 loop after logout ───────────────────────────────
+    // If the access token is already gone (user just logged out), there is
+    // no point trying to refresh — the logout handler already cleared the
+    // cookie via POST /auth/logout. Silently reject so background intervals
+    // (fleet polling, expiry-docs, etc.) stop without triggering an infinite
+    // refresh → 422 → force-logout → navigate → repeat cycle.
+    if (!getToken() && !isRefreshing) {
+      return Promise.reject(error);
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({
@@ -94,7 +104,6 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-     
       const { data } = await axios.post<{ access_token: string }>(
         `${import.meta.env.VITE_API_URL}/auth/refresh`,
         null,

@@ -58,6 +58,26 @@ async def get_vehicle_details(
 
 # ── Admin endpoints ──────────────────────────────────────────────────────────
 
+@admin_router.get(
+    "/admin/vehicles",
+    response_model=list[VehicleListItem],
+    dependencies=[Depends(require_role(UserRole.manager, UserRole.admin))],
+)
+async def get_all_vehicles(
+    conn: Annotated[Connection, Depends(get_db_connection)],
+    branch_tag: str | None = None,
+    vehicle_type: str | None = None,
+    status: str | None = None,
+):
+    """Admin fleet listing — returns ALL vehicles regardless of status."""
+    return await inventory_service.get_all_vehicles(
+        conn=conn,
+        branch_tag=branch_tag,
+        vehicle_type=vehicle_type,
+        status=status,
+    )
+
+
 # NOTE: This MUST be defined before /admin/vehicles/{vehicle_id} so that
 # FastAPI does not try to coerce the literal string "expiring-docs" as a UUID.
 @admin_router.get(

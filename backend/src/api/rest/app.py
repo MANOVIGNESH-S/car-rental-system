@@ -34,9 +34,13 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json"
     )
 
-    register_cors(app)
     register_exception_handlers(app)
     app.add_middleware(RequestLoggingMiddleware)
+    # CORS must be registered LAST so it is outermost in the middleware stack.
+    # Starlette adds middlewares in LIFO order, so the last-added wraps all others.
+    # This guarantees Access-Control-Allow-Origin is present on every response,
+    # including error responses that bubble up through RequestLoggingMiddleware.
+    register_cors(app)
 
     app.include_router(auth_router, prefix="/auth", tags=["Auth"])
     app.include_router(users_router, prefix="/users", tags=["Users"])

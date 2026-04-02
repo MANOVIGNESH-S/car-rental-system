@@ -12,8 +12,7 @@ import { useToast } from '../../../context/ToastContext';
 type FleetFilters = {
   branch_tag?: string;
   vehicle_type?: string;
-  fuel_type?: string;
-  transmission?: string;
+  status?: string;
 };
 
 export function useFleet() {

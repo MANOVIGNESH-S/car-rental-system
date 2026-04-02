@@ -47,10 +47,11 @@ export interface ExpiringDocItem {
 export const getFleetVehicles = async (filters?: {
   branch_tag?: string;
   vehicle_type?: string;
-  fuel_type?: string;
-  transmission?: string;
+  status?: string;
 }): Promise<VehicleListItem[]> => {
-  const response = await apiClient.get<VehicleListItem[]>('/inventory/inventory', {
+  // Use the admin endpoint so ALL vehicles are returned (available, maintenance, retired).
+  // The public /inventory/inventory endpoint only returns available vehicles.
+  const response = await apiClient.get<VehicleListItem[]>('/admin/vehicles', {
     params: filters,
   });
   return response.data;

@@ -55,9 +55,9 @@ export function VehicleFormModal({
           setTransmission(editVehicle.transmission);
           setFuelType(editVehicle.fuel_type);
           setBranchTag(editVehicle.branch_tag);
-          setHourlyRate(editVehicle.hourly_rate.toString());
-          setDailyRate(editVehicle.daily_rate.toString());
-          setSecurityDeposit(editVehicle.security_deposit.toString());
+          setHourlyRate(String(parseFloat(editVehicle.hourly_rate.toString())));
+          setDailyRate(String(parseFloat(editVehicle.daily_rate.toString())));
+          setSecurityDeposit(String(parseFloat(editVehicle.security_deposit.toString())));
           setFuelLevelPct(editVehicle.fuel_level_pct.toString());
           // Expiry dates — pre-fill from existing vehicle (AI-extracted or previously saved)
           setInsuranceExpiry(editVehicle.insurance_expiry_date ?? '');

@@ -1,12 +1,27 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.constants.enums import FuelType, Transmission, VehicleStatus
+
+
+def _normalize_decimal(v: object) -> object:
+    """Prevent scientific-notation serialization (e.g. 1E+4) for NUMERIC columns.
+
+    asyncpg returns PostgreSQL NUMERIC values as Python Decimal objects.
+    When the DB stores a value without a fractional part (e.g. 10000), the
+    Decimal may carry an exponent internally (Decimal('1E+4')) which
+    Pydantic / the JSON encoder then emits literally as 1E+4. Rounding
+    to two decimal places forces a canonical form (10000.00) that
+    serialises as a plain number.
+    """
+    if isinstance(v, Decimal):
+        return v.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return v
 
 
 class VehicleListItem(BaseModel):
@@ -24,6 +39,11 @@ class VehicleListItem(BaseModel):
     fuel_level_pct: int
     vehicle_status: VehicleStatus
     model_config = ConfigDict(from_attributes=True)
+
+    # ── Decimal normalisation validators ─────────────────────────────────────
+    _norm_hourly = field_validator("hourly_rate", mode="before")(_normalize_decimal)
+    _norm_daily = field_validator("daily_rate", mode="before")(_normalize_decimal)
+    _norm_deposit = field_validator("security_deposit", mode="before")(_normalize_decimal)
 
 
 class VehicleDetailResponse(VehicleListItem):

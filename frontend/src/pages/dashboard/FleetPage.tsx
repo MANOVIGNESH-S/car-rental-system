@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, X, Loader2, Car } from 'lucide-react';
 import { useFleet } from '../../features/fleet/hooks/useFleet';
@@ -64,7 +64,6 @@ export function FleetPage() {
     }
   }, [searchParams, setSearchParams]);
 
-  // THIS IS THE MISSING FUNCTION THAT FIXES YOUR ERRORS
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
   }, []);
@@ -80,31 +79,26 @@ export function FleetPage() {
       const data = await getFleetVehicleById(vehicleId);
       setSelectedVehicle(data);
       setIsModalOpen(true);
-      setToastMessage(null); 
+      setToastMessage(null);
     } catch (err) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      showToast(`Error: ${e.response?.data?.detail || 'Failed to fetch details'}`);
+      const e = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (e.response?.status === 401) {
+        showToast('Session expired — please log in again.');
+        window.dispatchEvent(new Event('auth:force-logout'));
+      } else {
+        showToast(`Error: ${e.response?.data?.detail ?? 'Failed to fetch vehicle details'}`);
+      }
     }
   };
 
   const handleDelete = async (vehicleId: string) => {
-    try {
-      await removeVehicle(vehicleId);
-      showToast('Vehicle deleted successfully');
-    } catch (err) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      showToast(`Error: ${e.response?.data?.detail || 'Delete failed'}`);
-    }
+    await removeVehicle(vehicleId);
+    // toast is handled inside useFleet (success + the backend's "retire instead" error message)
   };
 
   const handleStatusChange = async (vehicleId: string, status: VehicleStatus) => {
-    try {
-      await changeStatus(vehicleId, status);
-      showToast('Status updated');
-    } catch (err) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      showToast(`Error: ${e.response?.data?.detail || 'Update failed'}`);
-    }
+    await changeStatus(vehicleId, status);
+    // toast is handled inside useFleet
   };
 
   const handleModalClose = () => {
@@ -122,6 +116,7 @@ export function FleetPage() {
     fetchVehicles({
       branch_tag: branchFilter || undefined,
       vehicle_type: typeFilter || undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
     });
   };
 
@@ -132,11 +127,7 @@ export function FleetPage() {
     fetchVehicles({});
   };
 
-  const filteredVehicles = useMemo(() => {
-    if (!vehicles) return [];
-    if (statusFilter === 'all') return vehicles;
-    return vehicles.filter(v => v.vehicle_status === statusFilter);
-  }, [vehicles, statusFilter]);
+  // No client-side status filter needed — status is now passed to the API.
 
   const inputClass = "w-full sm:w-auto px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400";
   const selectClass = "w-full sm:w-auto px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer";
@@ -219,7 +210,7 @@ export function FleetPage() {
 
       {(!isLoading || vehicles.length > 0) && (
         <FleetTable 
-          vehicles={filteredVehicles}
+          vehicles={vehicles}
           isLoading={isLoading}
           onEdit={handleEdit}
           onDelete={handleDelete}
