@@ -26,6 +26,14 @@ A full-stack car rental platform with AI-powered KYC verification, booking manag
 
 This is a production-ready car rental management system that handles the full rental lifecycle — from user registration and KYC document verification to booking, vehicle check-in/check-out, damage assessment, and payment tracking. It supports three roles: **Customer**, **Manager**, and **Admin**, each with their own interface and permissions.
 
+<img width="1919" height="1009" alt="Screenshot 2026-05-02 180353" src="https://github.com/user-attachments/assets/a170a702-361b-4177-8266-0c04b08f1d0d" />
+<img width="1919" height="1013" alt="Screenshot 2026-05-02 180515" src="https://github.com/user-attachments/assets/eeb0c81d-5be7-420f-98bb-4f9d51b5816d" />
+<img width="1916" height="1017" alt="Screenshot 2026-05-02 180618" src="https://github.com/user-attachments/assets/f85fe8f5-130d-4323-a52d-793431ac23c3" />
+<img width="1919" height="1021" alt="Screenshot 2026-05-02 180658" src="https://github.com/user-attachments/assets/995f4d3c-c834-4f32-b4e3-1d180b5fae12" />
+<img width="1919" height="1005" alt="Screenshot 2026-05-02 180704" src="https://github.com/user-attachments/assets/6666cc77-cf2a-44a1-bc70-f98ae3553648" />
+<img width="1918" height="971" alt="Screenshot 2026-05-02 180733" src="https://github.com/user-attachments/assets/205c13de-438c-4aae-a23f-beefd6410519" />
+<img width="1919" height="966" alt="Screenshot 2026-05-02 180745" src="https://github.com/user-attachments/assets/e54ac9f5-ed43-479f-b8f4-c689e8d71931" />
+
 ---
 
 ## Features
